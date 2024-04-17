@@ -10,10 +10,10 @@ For the best developer experience, use the [Provenance Widgets Starter Code](htt
 
 ## Installation
 
-The library is hosted on Dropbox as a gzipped tarball. You can download it [here](https://www.dropbox.com/scl/fi/4112zqx985xcw1bylib31/provenance-widgets-0.0.1.tgz?rlkey=wkd8p7k36gzcl1atggr5ic7wv&dl=1). Alternatively, you can install it with npm using:
+The library can be installed from npm using
 
 ```sh
-npm i "https://www.dropbox.com/scl/fi/4112zqx985xcw1bylib31/provenance-widgets-0.0.1.tgz?rlkey=wkd8p7k36gzcl1atggr5ic7wv&dl=1"
+npm i provenance-widgets
 ```
 
 ## Configuration
