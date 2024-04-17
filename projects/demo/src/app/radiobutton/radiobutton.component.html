@@ -1,0 +1,13 @@
+<div class="col-6">
+
+    <div class="flex gap-2 mb-4">
+        <span class="text-3xl">Radio Buttons</span>
+        <p-tag value="V1" class="flex" severity="success"></p-tag>
+    </div>
+    <div class="flex flex-column mb-4">
+        <label class="mb-3 text-lg" for="rb-interaction">Interaction mode</label>
+        <provenance-radiobutton id="rb-interaction" [data]="cities" mode="interaction" name="rb-interaction" [(selected)]="selected" [(provenance)]="provenance.radiobutton" [freeze]="provenance.freeze">
+        </provenance-radiobutton>
+    </div>
+</div>
+<div class="col-6"></div>

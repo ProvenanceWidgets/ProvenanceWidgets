@@ -1,0 +1,67 @@
+<p-overlayPanel
+    #op
+    [dismissable]="false"
+    styleClass="textinput-overlay"
+>
+    <svg #provenance class="inputtext-provenance">
+        <g class="axis">
+            <text
+                transform="rotate(-90)"
+                text-anchor="middle"
+                fill="black"
+                y="-30"
+                [attr.font-size]="'small'"
+            >
+                {{mode === "interaction" ? "Sequence of Interaction (0 = first)" : "time"}}
+            </text>
+        </g>
+        <g class="body"></g>
+    </svg>
+</p-overlayPanel>
+<div
+    #wrapper
+    class="flex flex-row gap-3"
+>
+    <button
+        *ngIf="visualize"
+        pButton
+        #provenanceButton
+        type="button"
+        class="p-button-help p-button-text"
+        [disabled]="!hasUserInteracted"
+        (click)="handleProvenanceButtonClick($event, wrapper, op)"
+        [ngStyle]="{ 'padding': 0, 'align-self': 'center', 'height': 'min-content', 'visibility': visualize ? 'visible' : 'hidden'}"
+    >
+        
+    <provenance-icon 
+        [icon]="!hasUserInteracted ? 'disabled' : op.overlayVisible ? 'temporal' : 'aggregate'"
+    ></provenance-icon>
+   </button>
+    <p-autoComplete
+        #autocomplete
+        [appendTo]="'body'"
+        [ngModel]="{ label: field ? value[field] : value }"
+        [field]="'label'"
+        [suggestions]="getSuggestions()"
+        [overlayOptions]="{ appendTo: 'body' }"
+        (completeMethod)="handleSearch($event)"
+        (onFocus)="!autocomplete.value && autocomplete.handleDropdownClick($event)"
+        (onClear)="handleClear(autocomplete, $event)"
+        (onKeyUp)="handleKeyUp($event)"
+        (onSelect)="handleEnter('select')"
+        (mouseout)="handleMouseOut()"
+    >
+        <ng-template let-suggestion pTemplate="item">
+            <div style="position: relative; width: 100%;" (mousemove)="handleMouseOver($event, suggestion)" (mouseout)="handleMouseOut()">
+                <svg *ngIf="visualize" style="width: 100%; height: 100%; position: absolute">
+                    <rect x="0" y="0" [attr.width]="suggestion.width" [attr.fill]="suggestion.color" [attr.stroke]="'black'" [attr.stroke-width]="suggestion.timestamp >= this.oldMaxTime! ? 2 : 0" [attr.stroke-dasharray]="suggestion.timestamp === this.maxTime! ? '0 0' : '4 1'" style="height: 100%;"></rect>
+                </svg>
+                <div style="display: flex; justify-content: space-between; position: inherit;">
+                    <span>
+                        {{suggestion.label === "" ? '&lt;empty&gt;' : suggestion.label}}
+                    </span>
+                </div>
+            </div>
+        </ng-template>
+    </p-autoComplete>
+</div>

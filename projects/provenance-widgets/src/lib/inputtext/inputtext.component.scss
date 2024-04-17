@@ -1,0 +1,8 @@
+::ng-deep {
+    .textinput-overlay > .p-overlaypanel-content {
+        overflow-y: auto;
+        max-height: calc(250px + 1rem + 2.5rem);
+        padding-left: 0px !important;
+        padding-right: 0px !important;
+    }
+}

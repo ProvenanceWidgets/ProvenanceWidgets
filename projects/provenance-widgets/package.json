@@ -1,0 +1,21 @@
+{
+  "name": "provenance-widgets",
+  "version": "0.0.1",
+  "peerDependencies": {
+    "@angular/common": "^15.2.0",
+    "@angular/core": "^15.2.0",
+    "@angular/platform-browser": "^15.2.9",
+    "@angular/elements": "^15.2.9",
+    "@angular/forms": "^15.2.9",
+    "@angular-slider/ngx-slider": "^15.0.0",
+    "d3": "^7.8.5",
+    "@types/d3": "^7.4.3",
+    "lodash.isequal": "^4.5.0",
+    "@types/lodash.isequal": "^4.5.8",
+    "primeng": "^15.4.1",
+    "primeflex": "^3.3.0",
+    "primeicons": "^6.0.1",
+    "tslib": "^2.3.0"
+  },
+  "sideEffects": false
+}

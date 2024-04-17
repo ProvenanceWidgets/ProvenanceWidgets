@@ -1,0 +1,26 @@
+::ng-deep {
+    div.provenance-multiselect-panel > div > ul {
+        position: relative;
+    }
+    // div.provenance-multiselect-panel > div.p-multiselect-header.ng-star-inserted {
+    //     display: block;
+    // }
+    // div.provenance-multiselect-panel > div.p-multiselect-header.ng-star-inserted > button {
+    //     display: none;
+    // }
+
+    // select footer if it has p-slider in it
+    div.provenance-multiselect-panel > div.p-multiselect-footer.ng-star-inserted:has(div.temporal-slider) {
+        // padding: 20px;
+        padding-left: calc(40px + 8px);
+        padding-right: calc(20px + 4px);
+    }
+
+    div.provenance-multiselect-panel > div.p-multiselect-items-wrapper > ul > p-multiselectitem > li.p-multiselect-item {
+        background: none !important;
+    }
+
+    div.provenance-multiselect {
+        width: initial !important;
+    }
+}

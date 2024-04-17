@@ -1,0 +1,51 @@
+<p-overlayPanel
+  #op
+  [dismissable]="false"
+>
+  <svg #provenance class="slider-provenance">
+    <g class="axis">
+      <text 
+        transform="rotate(-90)" 
+        text-anchor="middle" 
+        y="-33" 
+        fill="black"
+        [attr.font-size]="'1rem'"
+      >
+        {{mode === "interaction" ? "Sequence of Interaction (0 = first)" : "time"}}
+      </text>
+    </g>
+    <g class="body"></g>
+  </svg>
+</p-overlayPanel>
+<div
+  #wrapper
+  class="flex flex-row gap-3 custom-slider"
+>
+  <button
+    *ngIf="visualize"
+    pButton
+    #provenanceButton
+    type="button"
+    class="p-button-help p-button-text"
+    (click)="handleProvenanceButtonClick($event, wrapper, op)"
+    [disabled]="data.length === 1"
+    [ngStyle]="{ 'padding': 0, 'align-self': 'center', 'height': 'min-content', 'visibility': visualize ? 'visible' : 'hidden'}"
+  >
+    <provenance-icon 
+      [icon]="data.length === 1 ? 'disabled' : op.overlayVisible ? 'temporal' : 'aggregate'"
+    ></provenance-icon>
+  </button>
+  <svg #aggregate style="position: absolute;" width="0" height="0">
+    <g></g>
+  </svg>
+  <ngx-slider
+  [(value)]="value"
+  [(highValue)]="highValue"
+  [options]="options"
+  (userChange)="userChange"
+  (userChangeEnd)="onUserChangeEnd($event)"
+  (userChangeStart)="userChangeStart"
+  (valueChange)="valueChange"
+  (highValueChange)="highValueChange"
+  />
+</div>

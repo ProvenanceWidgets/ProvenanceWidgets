@@ -1,0 +1,36 @@
+<div class="col-6">
+
+  <div class="flex gap-2 mb-4">
+    <span class="text-3xl">Slider</span>
+    <p-tag severity="success" value="v1" class="flex"></p-tag>
+  </div>
+  <!-- <label for="s-hybrid">Hybrid mode</label>
+  <provenance-slider id="s-hybrid" [value]="value" [options]="{ floor: 0, ceil: 250, showTicks: true, tickStep: 25 }"
+    mode="hybrid" /> -->
+  <label for="s-interaction">Interaction mode</label>
+  <provenance-slider id="s-interaction" [value]="value"
+    [options]="{ floor: 0, ceil: 250, showTicks: true, tickStep: 25 }" mode="interaction" [(provenance)]="provenance.slider" (provenanceChange)="handleProvenanceChange()" [freeze]="provenance.freeze" [attr.data-label]="'Interaction slider'"/>
+  <!-- <label for="s-time">Time mode</label>
+  <provenance-slider id="s-time" [value]="value" [options]="{ floor: 0, ceil: 250, showTicks: true, tickStep: 25 }"
+    mode="time" /> -->
+  <hr />
+  <div class="flex gap-2 mb-4">
+    <span class="text-3xl">Range Slider</span>
+    <p-tag severity="success" value="v1" class="flex"></p-tag>
+  </div>
+  <!-- <label for="rs-hybrid">Hybrid mode</label>
+  <provenance-slider id="rs-hybrid" [value]="value" [highValue]="highValue"
+    [options]="{ floor: 0, ceil: 250, showTicks: true, tickStep: 25 }" mode="hybrid" /> -->
+  <label for="rs-interaction">Interaction mode</label>
+  <provenance-slider id="rs-interaction" [value]="value" [highValue]="highValue"
+    [options]="{ floor: 0, ceil: 250, showTicks: true, tickStep: 25 }" mode="interaction" [(provenance)]="provenance.range_slider" [freeze]="provenance.freeze"/>
+  <!-- <label for="rs-time">Time mode</label>
+  <provenance-slider id="rs-time" [value]="value" [highValue]="highValue"
+    [options]="{ floor: 0, ceil: 250, showTicks: true, tickStep: 25 }" mode="time" /> -->
+
+</div>
+<div class="col-6">
+  <ul>
+    <li>Add labels</li>
+  </ul>
+</div>

@@ -1,0 +1,67 @@
+<div
+    style="display: flex; margin-bottom: 1rem; margin-top: 1rem;"
+>
+    <button
+        *ngIf="visualize"
+        pButton
+        type="button"
+        class="p-button-help p-button-text"
+        [disabled]="!getProvenance().hasUserInteracted"
+        [style]="{'margin-right': '0.5rem', 'height': '22px', 'width': '22px', 'padding': '0px', 'visibility': visualize ? 'visible' : 'hidden'}"
+        #btn
+        (click)="getProvenance().toggleProvenanceMode(btn, true)"
+    >
+    <provenance-icon 
+        [icon]="!getProvenance().hasUserInteracted ? 'disabled' : getProvenance().provenanceMode"
+        [size]="20"
+        style="height: 20px;"
+    ></provenance-icon>
+    </button>
+    <div class="custom-slider" style="width: 100%">
+        <ngx-slider
+            *ngIf="getProvenance().provenanceMode === 'temporal'"
+            [value]="getProvenance().temporalFilterRange[0]"
+            [highValue]="getProvenance().temporalFilterRange[1]"
+            [options]="getProvenance().temporalOptions"
+            (userChangeEnd)="getProvenance().setTemporalRange($event)"
+            style="margin-top: 0px"
+        >
+        </ngx-slider>
+    </div>
+</div>
+<div 
+    *ngFor="let d of data" 
+    class="field-checkbox"
+    style="position: relative;"
+>
+    <svg
+        [id]="getId() + d[value || 'value']"
+        width="0"
+        height="0"
+        style="position: absolute;"
+    >
+    </svg>
+    <p-checkbox
+        [inputId]="d[inputId || 'inputId'] || null"
+        [name]="d[name || 'name'] || null"
+        [value]="d[value || 'value'] || null"
+        [label]="d[label || 'label'] || null"
+        [disabled]="d['disabled'] || false"
+        [binary]="d['binary'] || false"
+        [tabindex]="d['tabindex'] || null"
+        [style]="d['style'] || style || null"
+        [styleClass]="d['styleClass'] || styleClass || null"
+        [labelStyleClass]="d['labelStyleClass'] || labelStyleClass || null"
+        [checkboxIcon]="d['checkboxIcon'] || 'pi pi-check'"
+        [readonly]="d['readonly'] || false"
+        [required]="d['required'] || false"
+        [trueValue]="d['trueValue'] || true"
+        [falseValue]="d['falseValue'] || false"
+        (ngModelChange)="this.getProvenance().interaction = 'user-change'; selectedChange.emit($event)"
+        [ngModel]="selected"
+        (onBlur)="onBlur"
+        (onClick)="onClick"
+        (onChange)="onChange"
+    >
+    </p-checkbox>
+</div>

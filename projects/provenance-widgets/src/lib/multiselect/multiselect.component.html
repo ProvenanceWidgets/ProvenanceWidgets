@@ -1,0 +1,118 @@
+<div class="p-inputgroup flex flex-row gap-3">
+    <button
+    *ngIf="visualize"
+    pButton
+    type="button"
+    class="p-button-help p-button-text"
+    [disabled]="!getProvenance().hasUserInteracted"
+    [ngStyle]="{ 'padding': 0, 'align-self': 'center', 'height': 'min-content', 'visibility': visualize ? 'visible' : 'hidden'}"
+    #btn
+    (click)="handleClick(btn)"
+   >
+    <provenance-icon 
+    [icon]="!getProvenance().hasUserInteracted ? 'disabled' : getProvenance().provenanceMode"
+    [size]="iconSize"
+    ></provenance-icon>
+   </button>
+   <p-multiSelect
+    #pMultiSelect 
+    [appendTo]="appendTo" 
+    [ariaFilterLabel]="ariaFilterLabel" 
+    [label]="label"
+    [ariaLabelledBy]="ariaLabelledBy"
+    [autofocusFilter]="autofocusFilter"
+    [autoZIndex]="autoZIndex"
+    [baseZIndex]="baseZIndex"
+    [defaultLabel]="defaultLabel"
+    [dataKey]="dataKey"
+    [disabled]="disabled"
+    [displaySelectedLabel]="displaySelectedLabel"
+    [dropdownIcon]="dropdownIcon"
+    [emptyFilterMessage]="emptyFilterMessage"
+    [filter]="filter"
+    [filterMatchMode]="filterMatchMode"
+    [filterValue]="filterValue"
+    [filterLocale]="filterLocale"
+    [filterBy]="filterBy"
+    [filterPlaceHolder]="filterPlaceHolder"
+    [hideTransitionOptions]="hideTransitionOptions"
+    [inputId]="inputId"
+    [maxSelectedLabels]="maxSelectedLabels || 3"
+    [name]="name"
+    [options]="options"
+    [optionLabel]="optionLabel"
+    [optionValue]="optionValue"
+    [optionDisabled]="optionDisabled"
+    [optionGroupLabel]="optionGroupLabel"
+    [optionGroupChildren]="optionGroupChildren"
+    [group]="group"
+    [overlayVisible]="overlayVisible"
+    [panelStyle]="panelStyle"
+    [placeholder]="placeholder"
+    [readonly]="readonly"
+    [emptyMessage]="emptyMessage"
+    [emptyFilterMessage]="emptyFilterMessage"
+    [resetFilterOnHide]="resetFilterOnHide"
+    [scrollHeight]="scrollHeight"
+    [selectedItemsLabel]="selectedItemsLabel"
+    [selectionLimit]="selectionLimit"
+    [showHeader]="showHeader"
+    [showTransitionOptions]="showTransitionOptions"
+    [showToggleAll]="showToggleAll"
+    [style]="style"
+    [styleClass]="(styleClass || '') + ' provenance-multiselect'"
+    [panelStyleClass]="(panelStyleClass || '') + 'provenance-multiselect-panel panel' + this.getId()"
+    [tabindex]="tabindex"
+    [tooltip]="tooltip"
+    [tooltipStyleClass]="tooltipStyleClass"
+    [tooltipPosition]="tooltipPosition"
+    [tooltipPositionStyle]="tooltipPositionStyle"
+    [showClear]="showClear"
+    [virtualScroll]="virtualScroll"
+    [virtualScrollItemSize]="virtualScrollItemSize"
+    [virtualScrollOptions]="virtualScrollOptions"
+    [overlayOptions]="myOverlayOptions"
+    [lazy]="lazy"
+    (onClick)="onClick"
+    (onChange)="onChange"
+    (onFilter)="handleFilter($event)"
+    (onFocus)="onFocus"
+    (onBlur)="onBlur"
+    (onPanelShow)="handleShow($event)"
+    (onPanelHide)="handleHide($event)"
+    (onClear)="onClear"
+    (onLazyLoad)="onLazyLoad"
+    (onRemove)="onRemove"
+    (ngModelChange)="this.getProvenance().interaction = 'user-change'; selectedChange.emit($event)"
+    [ngModel]="selected"
+    >
+      <ng-template let-option pTemplate="item">
+        <div style="position: relative; width: 100%;" [id]="getId() + option[dataKey] + 'div'">
+          <svg 
+            [id]="getId() + option[dataKey]" 
+            width="0" 
+            height="0"
+            [style]="{ 'position': 'absolute', 'display': getProvenance().hasUserInteracted ? 'initial' : 'none' }"
+          ></svg>
+          <div style="display: flex; justify-content: space-between; position: inherit;">
+            <span>
+              {{ option[optionLabel] }}
+            </span>
+          </div>
+        </div>
+      </ng-template>
+      <ng-template pTemplate="footer">
+        <div class="custom-slider temporal-slider">
+          <ngx-slider
+            *ngIf="getProvenance().provenanceMode === 'temporal'"
+            [value]="getProvenance().temporalFilterRange[0]"
+            [highValue]="getProvenance().temporalFilterRange[1]"
+            [options]="getProvenance().temporalOptions"
+            (userChangeEnd)="getProvenance().setTemporalRange($event)"
+          >
+          </ngx-slider>
+        </div>
+      </ng-template>
+    </p-multiSelect>
+  
+   </div>

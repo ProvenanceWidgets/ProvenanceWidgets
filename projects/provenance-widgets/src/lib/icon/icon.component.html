@@ -1,0 +1,13 @@
+<img
+    [width]="size || 32"
+    [height]="size || 32"
+    [src]="icon === 'aggregate' ? AGGREGATE_B64 : icon === 'temporal' ? TEMPORAL_B64 : DISABLED_B64"
+    style="vertical-align: initial;"
+    [pTooltip]="tooltipText"
+    [tooltipOptions]="{ 
+        escape: false,
+        hideOnEscape: true,
+        showDelay: 500,
+        tooltipStyleClass: 'provenance-icon-tooltip'
+    }"
+/>

@@ -1,0 +1,28 @@
+<div class="col-6">
+  <div class="flex gap-2 mb-4">
+    <span class="text-3xl">MultiSelect</span>
+    <p-tag severity="success" value="V1" class="flex"></p-tag>
+  </div>
+  <div class="flex flex-column mb-4">
+    <label for="ms-interaction">Interaction mode</label>
+    <provenance-multiselect
+      id="ms-interaction"
+      [options]="cities"
+      optionLabel="name"
+      dataKey="code"
+      mode="interaction"
+      [(selected)]="selected"
+      [(provenance)]="provenance.multiselect"
+      [freeze]="provenance.freeze"
+      [attr.data-label]="'Interaction multiselect'"
+    /></div>
+  
+</div>
+<div class="col-6">
+  <ul>
+    <li>Display (slider for) t = 0 to now</li>
+    <li>PrimeNG issue: make width static</li>
+    <li>v2: Add minimap</li>
+    <li><s>(Low priority): Fix flashing bars in time mode</s></li>
+  </ul>
+</div>

@@ -1,0 +1,26 @@
+<div class="col-6">
+
+    <div class="flex gap-2 mb-4">
+        <span class="text-3xl">Checkboxes</span>
+        <p-tag value="V1" class="flex" severity="success"></p-tag>
+    </div>
+    <div class="flex flex-column mb-4">
+        <label class="mb-3 text-lg" for="cb-interaction">Interaction mode</label>
+        <provenance-checkbox 
+            id="cb-interaction" 
+            [data]="cities" 
+            mode="interaction" 
+            label="name" 
+            value="code" 
+            name="undefined" 
+            [(selected)]="selected"
+            [(provenance)]="provenance.checkbox"
+            (provenanceChange)="handleProvenanceChange()"
+            [freeze]="provenance.freeze"
+        >
+        </provenance-checkbox>
+    </div>
+</div>
+<div class="col-6">
+
+</div>

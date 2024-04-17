@@ -1,0 +1,33 @@
+<div class="card">
+  <p-toolbar>
+    <small class="text-3xl">Provenance Widgets</small>
+    <div class="p-toolbar-group-end">
+      <button pButton class="p-button-success mr-1" (click)="handleFreeze()">{{provenance.freeze ? "Un-freeze" : "Freeze"}}</button>
+      <button pButton class="p-button-success" (click)="handleSimulateReload()">Simulate reload</button>
+    </div>
+  </p-toolbar>
+  <div class="grid p-4">
+    <div class="col-6 text-3xl">Widgets</div>
+    <div class="col-6 text-3xl">Roadmap/TODOs</div>
+    <div class="col-offset-6">      
+    </div>
+    <div *ngIf="show">
+      <app-slider class="grid col-12"></app-slider>
+      <hr class="col-12 p-0"/>
+      <app-multiselect class="grid col-12"></app-multiselect>
+      <hr class="col-12 p-0"/>
+      <app-dropdown class="grid col-12"></app-dropdown>
+      <hr class="col-12 p-0"/>
+      <app-checkbox class="grid col-12"></app-checkbox>
+      <hr class="col-12 p-0"/>
+      <app-radiobutton class="grid col-12"></app-radiobutton>
+      <hr class="col-12 p-0"/>
+      <app-inputnumber class="grid col-12"></app-inputnumber>
+      <hr class="col-12 p-0"/>
+      <app-inputtext class="grid col-12"></app-inputtext>
+      <hr class="col-12 p-0"/>
+      <app-voyager></app-voyager>
+    </div>
+  </div>
+</div>
+<!-- <router-outlet></router-outlet> -->

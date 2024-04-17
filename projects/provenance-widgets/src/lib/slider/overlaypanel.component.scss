@@ -1,0 +1,25 @@
+::ng-deep {
+  provenance-slider {
+    display: initial !important;
+  }
+
+  .p-overlaypanel {
+    box-shadow: none;
+    margin-top: 0;
+  }
+
+  .p-overlaypanel::before {
+    display: none;
+  }
+
+  .p-overlaypanel::after {
+    display: none;
+  }
+
+  .p-overlaypanel-content {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    border: 0 none;
+    border-radius: 6px;
+    color: #495057;
+  }
+}

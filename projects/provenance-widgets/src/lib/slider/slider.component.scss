@@ -1,0 +1,55 @@
+::ng-deep {
+
+  .custom-slider .ngx-slider .ngx-slider-bar {
+    background: lightgray;
+    height: 3px;
+  }
+  .custom-slider .ngx-slider .ngx-slider-selection {
+    background: var(--blue-500);
+  }
+
+  .custom-slider .ngx-slider .ngx-slider-pointer {
+    width: 8px;
+    height: 16px;
+    top: auto; /* to remove the default positioning */
+    bottom: 0;
+    background-color: #333;
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+  }
+
+  .custom-slider .ngx-slider .ngx-slider-pointer:after {
+    display: none;
+  }
+
+  .custom-slider:not(.temporal-slider) .ngx-slider .ngx-slider-bubble {
+    top: 5px;
+  }
+
+  .custom-slider .ngx-slider .ngx-slider-limit {
+    font-weight: bold;
+    color: var(--blue-500);
+  }
+
+  .custom-slider .ngx-slider .ngx-slider-tick {
+    width: 1px;
+    height: 10px;
+    margin-left: 4px;
+    border-radius: 0;
+    background: #ffe4d1;
+    top: -1px;
+  }
+
+  .custom-slider .ngx-slider .ngx-slider-tick.ngx-slider-selected {
+    background: var(--blue-500);
+  }
+
+  g.axis text {
+    font-size: 0.7rem
+  }
+
+  .custom-slider span {
+    margin-top: 0px !important;
+    padding-top: 0px !important;
+  }
+}

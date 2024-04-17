@@ -1,0 +1,17 @@
+<div class="col-6">
+
+    <div class="flex gap-2 mb-4">
+        <span class="text-3xl">&lt;input type='text'/&gt;</span>
+        <p-tag severity="success" value="v1" class="flex"></p-tag>
+    </div>
+    
+    <div class="flex flex-column mb-4">
+        <label for="it-interaction">Interaction mode</label>
+        <provenance-inputtext id="it-interaction" mode="interaction" [value]="value" [(provenance)]="provenance.inputtext" [freeze]="provenance.freeze" [attr.data-label]="'Interaction textinput'">
+            <input type="text" pInputText/>
+        </provenance-inputtext>
+
+    </div>
+    
+</div>
+<div class="col-6"></div>
