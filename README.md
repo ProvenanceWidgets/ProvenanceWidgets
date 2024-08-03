@@ -1,6 +1,19 @@
 # Provenance Widgets
+A library of GUI widgets such as range sliders and dropdowns to track and dynamically overlay analytic provenance.
 
-A library of GUI widgets that encode analytical provenance information in the form of embedded visualizations.
+### Read our paper, to appear in 2024 IEEE VIS Conference
+```bibTeX
+@article{narechania2024provenancewidgets,
+  title = {{ProvenanceWidgets}: {A Library of UI Control Elements to Track and Dynamically Overlay Analytic Provenance}},
+  shorttitle = {{ProvenanceWidgets}},
+  author = {{Narechania}, Arpit and {Odak}, Kaustubh and {El-Assady}, Mennatallah and {Endert}, Alex},
+  journal = {IEEE Transactions on Visualization and Computer Graphics (TVCG)},
+  doi = {10.48550/arXiv.2407.17431},
+  url = {https://doi.org/10.48550/arXiv.2407.17431},
+  year = {2024},
+  publisher = {IEEE}
+}
+```
 
 ## Quickstart
 
@@ -165,3 +178,7 @@ This subset of widgets allows the user to 'select' either a single item or multi
 - Extends: [`RadioButton`](https://www.primefaces.org/primeng-v15-lts/radiobutton)
 - Selector: `<provenance-radiobutton>`
 - Custom Properties/behaviors: Same as `Checkbox`, except that the `selected` property is of type `string`.
+
+
+## Contact
+If you have any questions, feel free to [open an issue](https://github.com/ProvenanceWidgets/ProvenanceWidgets/issues/new/choose) or contact [Arpit Narechania](http://narechania.com).
