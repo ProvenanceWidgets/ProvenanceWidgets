@@ -1,4 +1,8 @@
 ::ng-deep {
+    :host {
+        display: block;
+    }
+    
     p-radiobutton {
         z-index: 2;
     }

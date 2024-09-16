@@ -1,4 +1,7 @@
 ::ng-deep {
+    :host {
+        display: block;
+    }
     p-checkbox {
         z-index: 2;
     }

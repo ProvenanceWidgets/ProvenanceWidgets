@@ -2,12 +2,6 @@
     div.provenance-multiselect-panel > div > ul {
         position: relative;
     }
-    // div.provenance-multiselect-panel > div.p-multiselect-header.ng-star-inserted {
-    //     display: block;
-    // }
-    // div.provenance-multiselect-panel > div.p-multiselect-header.ng-star-inserted > button {
-    //     display: none;
-    // }
 
     // select footer if it has p-slider in it
     div.provenance-multiselect-panel > div.p-multiselect-footer.ng-star-inserted:has(div.temporal-slider) {
