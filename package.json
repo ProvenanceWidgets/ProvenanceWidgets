@@ -11,7 +11,6 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },
-  "private": true,
   "dependencies": {
     "@angular-slider/ngx-slider": "^15.0.0",
     "@angular/animations": "^15.2.9",
