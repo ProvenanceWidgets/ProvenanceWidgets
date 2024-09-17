@@ -1,9 +1,9 @@
-::ng-deep {
-    :host {
-        display: block;
-    }
-    
+::ng-deep {    
     p-radiobutton {
         z-index: 2;
     }
+}
+
+:host {
+    display: block;
 }
