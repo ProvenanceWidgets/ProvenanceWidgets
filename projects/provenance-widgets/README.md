@@ -1,8 +1,12 @@
 # ProvenanceWidgets
 
+[![DOI:10.1109/TVCG.2024.3456144](https://zenodo.org/badge/DOI/10.1109/TVCG.2024.3456144.svg)](https://doi.org/10.1109/TVCG.2024.3456144)
+[![arxiv badge](https://img.shields.io/badge/arXiv-2407.17431-red)](https://arxiv.org/abs/2407.17431)
+[![NPM - Downloads](https://img.shields.io/npm/dm/provenance-widgets)](https://www.npmjs.com/package/provenance-widgets)
+
 A JavaScript library of GUI Controls for Tracking and Dynamically Overlaying Analytic Provenance.
 
-### Read our paper, to appear in 2024 IEEE VIS Conference
+### Read and cite our paper, to appear in 2024 IEEE VIS Conference
 
 ```bibTeX
 @article{narechania2024provenancewidgets,
@@ -10,8 +14,8 @@ A JavaScript library of GUI Controls for Tracking and Dynamically Overlaying Ana
   shorttitle = {{ProvenanceWidgets}},
   author = {{Narechania}, Arpit and {Odak}, Kaustubh and {El-Assady}, Mennatallah and {Endert}, Alex},
   journal = {IEEE Transactions on Visualization and Computer Graphics (TVCG)},
-  doi = {10.48550/arXiv.2407.17431},
-  url = {https://doi.org/10.48550/arXiv.2407.17431},
+  doi = {10.1109/TVCG.2024.3456144},
+  url = {https://doi.org/10.1109/TVCG.2024.3456144},
   year = {2024},
   publisher = {IEEE}
 }
@@ -32,4 +36,4 @@ Visit https://provenancewidgets.github.io/ to view the full documentation and de
 
 ## Contact
 
-If you have any questions, feel free to [open an issue](https://github.com/ProvenanceWidgets/ProvenanceWidgets/issues/new/choose) or contact [Arpit Narechania](http://narechania.com).
+If you have any questions, feel free to [open an issue](https://github.com/ProvenanceWidgets/ProvenanceWidgets/issues/new/choose) or contact [Arpit Narechania](https://arpitnarechania.github.io).
