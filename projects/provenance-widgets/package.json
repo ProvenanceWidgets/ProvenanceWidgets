@@ -1,6 +1,6 @@
 {
   "name": "provenance-widgets",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "peerDependencies": {
     "@angular/common": "^15.2.0",
     "@angular/core": "^15.2.0",
