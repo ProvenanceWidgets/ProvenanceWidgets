@@ -2,7 +2,17 @@
   "name": "provenance-widgets",
   "version": "2.0.0",
   "type": "module",
-  "main": "src/index.ts",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "peerDependencies": {
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
@@ -20,6 +30,12 @@
     "guidance": "github:GuidanceWidgets/guidance#59668b2282a5f6cdc42d87780380a248e7e79aa5"
   },
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "build": "tsup",
+    "prepack": "npm run build"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.1",
+    "typescript": "^7.0.2"
   }
 }
