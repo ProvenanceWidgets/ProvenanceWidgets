@@ -1,0 +1,12 @@
+import { useContext } from "react"
+import ProvenanceContext from "../contexts/provenance.js"
+
+const useRevertedValue = (id) => {
+    const context = useContext(ProvenanceContext);
+    const value = context.state.revertedValues[id];
+    const setRevertedValues = context.actions.setRevertedValues;
+
+    return [value, setRevertedValues];
+}
+
+export default useRevertedValue;

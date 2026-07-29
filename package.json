@@ -1,54 +1,25 @@
 {
   "name": "provenance-widgets",
-  "version": "1.0.4",
-  "scripts": {
-    "ng": "ng",
-    "start": "ng serve --open",
-    "build": "ng build",
-    "build:widgets": "ng build provenance-widgets",
-    "build:wc": "ng build web-components --output-hashing none",
-    "build:all": "npm run build:widgets && npm run build:wc && node builder.mjs",
-    "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+  "version": "2.0.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "peerDependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
   },
   "dependencies": {
-    "@angular-slider/ngx-slider": "^15.0.0",
-    "@angular/animations": "^15.2.9",
-    "@angular/common": "^15.2.9",
-    "@angular/compiler": "^15.2.9",
-    "@angular/core": "^15.2.9",
-    "@angular/elements": "^15.2.9",
-    "@angular/forms": "^15.2.9",
-    "@angular/platform-browser": "^15.2.9",
-    "@angular/platform-browser-dynamic": "^15.2.9",
-    "@angular/router": "^15.2.9",
-    "@types/d3": "^7.4.3",
-    "d3": "^7.8.5",
-    "lodash.isequal": "^4.5.0",
-    "primeflex": "^3.3.0",
-    "primeicons": "^6.0.1",
-    "primeng": "^15.4.1",
-    "rxjs": "~7.8.0",
-    "tslib": "^2.3.0",
-    "vega": "^5.24.0",
-    "vega-embed": "^6.21.3",
-    "vega-lite": "^5.7.0",
-    "zone.js": "~0.12.0"
+    "@mantine/core": "^8.3.7",
+    "d3": "^7.9.0",
+    "d3-color": "^3.1.0",
+    "primereact": "^10.9.7",
+    "react-tooltip": "^5.30.0",
+    "scents": "github:ProvenanceWidgets/scents#839b8ee889ac5d4de875ba34db2a17ef1474624c",
+    "tstl": "^3.0.0"
   },
-  "devDependencies": {
-    "@angular-devkit/build-angular": "^15.2.10",
-    "@angular/cli": "~15.2.9",
-    "@angular/compiler-cli": "^15.2.9",
-    "@types/jasmine": "~4.3.0",
-    "@types/lodash.isequal": "^4.5.8",
-    "concat": "^1.0.3",
-    "jasmine-core": "~4.5.0",
-    "karma": "~6.4.0",
-    "karma-chrome-launcher": "~3.1.0",
-    "karma-coverage": "~2.2.0",
-    "karma-jasmine": "~5.1.0",
-    "karma-jasmine-html-reporter": "~2.0.0",
-    "ng-packagr": "^15.2.2",
-    "typescript": "~4.9.4"
+  "overrides": {
+    "guidance": "github:GuidanceWidgets/guidance#59668b2282a5f6cdc42d87780380a248e7e79aa5"
+  },
+  "scripts": {
+    "test": "node --test"
   }
 }
