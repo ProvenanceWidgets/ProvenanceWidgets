@@ -1,54 +1,56 @@
 {
   "name": "provenance-widgets",
-  "version": "1.0.4",
-  "scripts": {
-    "ng": "ng",
-    "start": "ng serve --open",
-    "build": "ng build",
-    "build:widgets": "ng build provenance-widgets",
-    "build:wc": "ng build web-components --output-hashing none",
-    "build:all": "npm run build:widgets && npm run build:wc && node builder.mjs",
-    "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+  "version": "2.0.0",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./web-components": {
+      "types": "./dist/web-components/index.d.ts",
+      "import": "./dist/web-components/index.js",
+      "default": "./dist/web-components/index.js"
+    },
+    "./web-components/index.js": {
+      "types": "./dist/web-components/index.d.ts",
+      "import": "./dist/web-components/index.js",
+      "default": "./dist/web-components/index.js"
+    },
+    "./web-components/styles.css": "./dist/web-components/styles.css"
+  },
+  "files": [
+    "dist"
+  ],
+  "peerDependencies": {
+    "preact": "^10.29.2",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
   },
   "dependencies": {
-    "@angular-slider/ngx-slider": "^15.0.0",
-    "@angular/animations": "^15.2.9",
-    "@angular/common": "^15.2.9",
-    "@angular/compiler": "^15.2.9",
-    "@angular/core": "^15.2.9",
-    "@angular/elements": "^15.2.9",
-    "@angular/forms": "^15.2.9",
-    "@angular/platform-browser": "^15.2.9",
-    "@angular/platform-browser-dynamic": "^15.2.9",
-    "@angular/router": "^15.2.9",
-    "@types/d3": "^7.4.3",
-    "d3": "^7.8.5",
-    "lodash.isequal": "^4.5.0",
-    "primeflex": "^3.3.0",
-    "primeicons": "^6.0.1",
-    "primeng": "^15.4.1",
-    "rxjs": "~7.8.0",
-    "tslib": "^2.3.0",
-    "vega": "^5.24.0",
-    "vega-embed": "^6.21.3",
-    "vega-lite": "^5.7.0",
-    "zone.js": "~0.12.0"
+    "@provenance-widgets/core": "github:ProvenanceWidgets/core#semver:^1.0.1",
+    "d3": "^7.9.0",
+    "d3-color": "^3.1.0",
+    "primereact": "^10.9.7",
+    "react-tooltip": "^5.30.0"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "npm run build:library && npm run build:web-components",
+    "build:library": "tsup",
+    "build:web-components": "tsup --config tsup.web-components.config.ts",
+    "prepack": "npm run typecheck",
+    "prepare": "npm run build"
   },
   "devDependencies": {
-    "@angular-devkit/build-angular": "^15.2.10",
-    "@angular/cli": "~15.2.9",
-    "@angular/compiler-cli": "^15.2.9",
-    "@types/jasmine": "~4.3.0",
-    "@types/lodash.isequal": "^4.5.8",
-    "concat": "^1.0.3",
-    "jasmine-core": "~4.5.0",
-    "karma": "~6.4.0",
-    "karma-chrome-launcher": "~3.1.0",
-    "karma-coverage": "~2.2.0",
-    "karma-jasmine": "~5.1.0",
-    "karma-jasmine-html-reporter": "~2.0.0",
-    "ng-packagr": "^15.2.2",
-    "typescript": "~4.9.4"
+    "@types/node": "^20.19.43",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "tsup": "^8.5.1",
+    "typescript": "5.6.2"
   }
 }

@@ -1,0 +1,32 @@
+@import "primereact/resources/themes/lara-light-cyan/theme.css";
+@import "primereact/resources/primereact.min.css";
+
+web-provenance-slider,
+web-provenance-multiselect,
+web-provenance-dropdown,
+web-provenance-checkbox,
+web-provenance-radiobutton,
+web-provenance-inputtext {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    color: var(--text-color, #4b5563);
+    font-family: var(--font-family, Arial, sans-serif);
+}
+
+.provenance-web-component {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.provenance-web-component__footprint {
+    flex: 0 0 auto;
+}
+
+.provenance-web-component__widget {
+    flex: 1 1 auto;
+    min-width: 0;
+}
