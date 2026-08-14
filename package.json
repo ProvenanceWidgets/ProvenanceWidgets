@@ -32,7 +32,7 @@
     "react-dom": "^19.2.0"
   },
   "dependencies": {
-    "@provenance-widgets/core": "github:ProvenanceWidgets/core#semver:^1.0.1",
+    "@provenance-widgets/core": "^1.0.0",
     "d3": "^7.9.0",
     "d3-color": "^3.1.0",
     "primereact": "^10.9.7",
@@ -43,9 +43,12 @@
     "build": "npm run build:library && npm run build:web-components",
     "build:library": "tsup",
     "build:web-components": "tsup --config tsup.web-components.config.ts",
+    "prepare": "npm run build",
     "prepack": "npm run typecheck",
-    "prepare": "npm run build"
+    "verify": "npm run typecheck && npm run build"
   },
+  "author": "Jianheng Ouyang",
+  "contributors": ["Antariksh Verma","Kaustubh Odak","Yiyao Tong","Arpit Narechania"],
   "devDependencies": {
     "@types/node": "^20.19.43",
     "@types/react": "^19.2.0",
