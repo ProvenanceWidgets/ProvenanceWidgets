@@ -51,6 +51,28 @@ A JavaScript library of GUI Controls for Tracking and Dynamically Overlaying Ana
 
 Visit https://provenancewidgets.github.io/ to view the full documentation and demos.
 
+## Install
+
+```bash
+npm install provenance-widgets
+```
+
+## Development
+
+```bash
+npm install
+```
+
+## Deployment
+
+```bash
+npm run verify
+npm login --auth-type=web
+npm whoami
+npm pack --dry-run
+npm publish --access public
+```
+
 ## Contact
 
-If you have any questions, feel free to [open an issue](https://github.com/ProvenanceWidgets/ProvenanceWidgets/issues/new/choose) or contact [Arpit Narechania](https://arpitnarechania.github.io/).
+If you have any questions, feel free to [open an issue](https://github.com/ProvenanceWidgets/ProvenanceWidgets/issues/new/choose) or contact [Arpit Narechania](https://narechania.com).
