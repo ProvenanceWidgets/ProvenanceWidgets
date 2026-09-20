@@ -35,6 +35,7 @@ const TEMPORAL_SLIDER_HEIGHT = 250;
 const INPUT_TEXT_TEMPORAL_HEIGHT = 440;
 
 const TemporalBrush = ({
+    height = TEMPORAL_BRUSH_HEIGHT,
     mode,
     onRangeChange,
     positions,
@@ -51,7 +52,7 @@ const TemporalBrush = ({
         const brush = d3
             .brushY()
             // Attach the brush to the y-axis and extend its hit area left.
-            .extent([[-42, 0], [0, TEMPORAL_BRUSH_HEIGHT]])
+            .extent([[-42, 0], [0, height]])
             .on("end", event => {
                 const range = brushSelectionToPositionRange(
                     event.selection,
@@ -97,6 +98,7 @@ const TemporalBrush = ({
         };
     }, [
         entryCount,
+        height,
         mode,
         onRangeChange,
         positions,
@@ -137,7 +139,7 @@ const TemporalBrush = ({
                 }
                 data-provenance-temporal-brush={target}
                 width="64"
-                height={TEMPORAL_BRUSH_HEIGHT}
+                height={height}
                 style={{ display: "block", overflow: "visible" }}
             >
                 <title>
@@ -145,12 +147,12 @@ const TemporalBrush = ({
                 </title>
                 <text
                     x="10"
-                    y={TEMPORAL_BRUSH_HEIGHT / 2}
+                    y={height / 2}
                     fill="#6c757d"
                     fontSize="11"
                     textAnchor="middle"
                     transform={
-                        `rotate(-90 10 ${TEMPORAL_BRUSH_HEIGHT / 2})`
+                        `rotate(-90 10 ${height / 2})`
                     }
                 >
                     {mode === "time"
@@ -161,7 +163,7 @@ const TemporalBrush = ({
                     x1="58"
                     x2="58"
                     y1="0"
-                    y2={TEMPORAL_BRUSH_HEIGHT}
+                    y2={height}
                     stroke="#6c757d"
                 />
                 {ticks.map(({ position, index }) => (
@@ -622,11 +624,22 @@ const Chart = ({
             chartData.mode ?? mode,
             TEMPORAL_BRUSH_HEIGHT
         );
-        const inputTextEntries = chartData.inputTextEntries ?? [];
+        const allInputTextEntries = chartData.inputTextEntries ?? [];
+        const inputTextBrushEnabled =
+            normalizeTemporalBrush(temporalBrush) &&
+            allInputTextEntries.length > 1;
+        const inputTextEntries = inputTextBrushEnabled
+            ? filterTemporalEntries(allInputTextEntries, brushRange)
+            : allInputTextEntries;
         const inputTextPlotHeight = INPUT_TEXT_TEMPORAL_HEIGHT;
         const inputTextYPositions = getTemporalYPositions(
             inputTextEntries,
-            "interaction",
+            mode,
+            inputTextPlotHeight
+        );
+        const inputTextBrushYPositions = getTemporalYPositions(
+            allInputTextEntries,
+            mode,
             inputTextPlotHeight
         );
         const inputTextSequenceMax = Math.max(
@@ -635,10 +648,14 @@ const Chart = ({
         );
         const inputTextTicks = inputTextSequenceMax === 0
             ? [0]
-            : d3.ticks(0, inputTextSequenceMax, 10);
-        const inputTextTickFormat = inputTextSequenceMax === 0
-            ? () => "0"
-            : d3.tickFormat(0, inputTextSequenceMax, 10);
+            : mode === "time"
+                ? [0, inputTextSequenceMax]
+                : d3.ticks(0, inputTextSequenceMax, 10);
+        const inputTextTickFormat = mode === "time"
+            ? value => value === 0 ? "t=0" : "now"
+            : inputTextSequenceMax === 0
+                ? () => "0"
+                : d3.tickFormat(0, inputTextSequenceMax, 10);
         const getInputTextTickY = value => {
             if (inputTextSequenceMax === 0) {
                 return inputTextPlotHeight / 2;
@@ -747,6 +764,17 @@ const Chart = ({
                     overflow: "visible",
                 }}
             >
+                {inputTextBrushEnabled ? (
+                    <TemporalBrush
+                        height={inputTextPlotHeight}
+                        mode={mode}
+                        onRangeChange={handleBrushRangeChange}
+                        positions={inputTextBrushYPositions}
+                        target={target}
+                        tooltipId={tooltipId}
+                        widgetType="input-text"
+                    />
+                ) : (
                 <div
                     style={{
                         position: "relative",
@@ -766,7 +794,9 @@ const Chart = ({
                             textAlign: "center",
                         }}
                     >
-                        Sequence of Interaction (0 = first)
+                        {mode === "time"
+                            ? "time"
+                            : "Sequence of Interaction (0 = first)"}
                     </div>
                     <svg
                         aria-hidden="true"
@@ -816,6 +846,7 @@ const Chart = ({
                         ))}
                     </svg>
                 </div>
+                )}
                 <div
                     style={{
                         position: "relative",
