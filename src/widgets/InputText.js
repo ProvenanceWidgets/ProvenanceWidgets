@@ -401,7 +401,9 @@ const InputText = (props) => {
                             backgroundColor: "#fff",
                             boxShadow:
                                 "0 4px 6px rgba(0, 0, 0, 0.12)",
-                            overflow: "hidden",
+                            maxHeight: "150px",
+                            overflowX: "hidden",
+                            overflowY: "auto",
                         }}
                     >
                         {suggestions.map(({
