@@ -21,6 +21,8 @@ export default defineConfig({
     /^d3(?:$|[-/].*)/,
     /^react-tooltip(?:\/.*)?$/,
     /^tstl(?:\/.*)?$/,
+    // The vendored CommonJS filter requires this at runtime; bundle it for ESM/browser use.
+    /^ml-matrix(?:\/.*)?$/,
   ],
 
   esbuildOptions(options) {

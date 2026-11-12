@@ -4,6 +4,7 @@ import type {
   ProvenanceOption,
   RadioGroupProps,
   RangeSliderValue,
+  ScalabilityOptions,
   SerializedProvenance,
   SingleSelectDropdownProps,
   SliderOptions,
@@ -48,6 +49,7 @@ export type ProvenanceElement<
     visualize?: boolean;
     dataLabel?: string;
     temporalBrush?: boolean;
+    scalability?: ScalabilityOptions;
     widgetProps?: Record<string, unknown>;
   };
 

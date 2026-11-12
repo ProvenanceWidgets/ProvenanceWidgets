@@ -92,6 +92,7 @@ export const COMMON_PROPERTIES = Object.freeze([
     "visualize",
     "dataLabel",
     "temporalBrush",
+    "scalability",
 ]);
 
 export const getAttributeProperties = (

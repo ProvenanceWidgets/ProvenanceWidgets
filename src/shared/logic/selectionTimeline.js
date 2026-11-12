@@ -90,6 +90,8 @@ export const buildSelectionTimelineBars = ({
             left,
             width,
             relativeTime: clamp(relativeTime, 0, 1),
+            gradientStart: clamp((start - baseMin) / baseSpan, 0, 1),
+            gradientEnd: clamp((end - baseMin) / baseSpan, 0, 1),
             startValue: startRaw,
             endValue: endRaw,
             visibleMin,

@@ -1,3 +1,5 @@
+import CheckboxZoomAxis from "../shared/components/CheckboxZoomAxis.js";
+import useClippingBadge from "../shared/hooks/useClippingBadge.js";
 import {
     Children,
     isValidElement,
@@ -31,13 +33,11 @@ import {
     resolveCheckboxGroupValue,
     restoreCheckboxGroupTemporalValue,
 } from "../shared/logic/checkboxGroupValue.js";
-import {
-    getSelectionTimeDomain,
-    normalizeSelectionBrushRange,
-} from "../shared/logic/selectionTimeline.js";
-import { shouldCommitSliderChange } from "../shared/logic/sliderInteraction.js";
+import { getSelectionTimeDomain } from "../shared/logic/selectionTimeline.js";
 import { resolveTemporalBrushEnabled } from "../shared/logic/sliderTemporal.js";
 import TemporalRangeSlider from "../shared/components/TemporalRangeSlider.js";
+import TemporalZoomBrush from "../shared/components/TemporalZoomBrush.js";
+import useCheckboxTemporalScalability from "../shared/hooks/useCheckboxTemporalScalability.js";
 
 export { useCheckboxGroup };
 
@@ -157,9 +157,6 @@ const CheckboxGroup = (props) => {
         restoreWidgetValue,
     } = useWidgetRegistry();
     const [showTimeline, setShowTimeline] = useState(false);
-    const [brushRange, setBrushRange] = useState([0, 100]);
-    const [brushDisplayRange, setBrushDisplayRange] =
-        useState([0, 100]);
     const elementRef = useRef(null);
     const propsRef = useRef(props);
     const availableOptionsRef = useRef(availableOptions);
@@ -200,6 +197,20 @@ const CheckboxGroup = (props) => {
         onProvenanceChange:
             props.onProvenanceChange ?? props.provenanceChange,
         strategyFactory,
+    });
+    const clipping = useCheckboxTemporalScalability({
+        id,
+        widget: "checkbox-group",
+        scalability: props.scalability,
+        mode: provenanceMode,
+        provenance: strategy,
+        records: serializedProvenance.data,
+        temporalBrush,
+        elementRef,
+    });
+    const { message: clippingMessage, revision: clippingRevision } = useClippingBadge({
+        records: serializedProvenance.data, scalability: props.scalability,
+        width: clipping.width, mode: provenanceMode, showTimeline,
     });
     const [selection, setSelection] = useState(
         () => Array.isArray(currentValue) ? currentValue : []
@@ -397,6 +408,8 @@ const CheckboxGroup = (props) => {
             visualize,
             mode: provenanceMode,
             rendersOwnTemporalHeader: true,
+            clippingMessage,
+            clippingRevision,
             focus: () => {
                 elementRef.current?.scrollIntoView?.({
                     behavior: "smooth",
@@ -424,6 +437,8 @@ const CheckboxGroup = (props) => {
         strategy,
         id,
         applyRegisteredValue,
+        clippingMessage,
+        clippingRevision,
         registerWidget,
         notifyWidget,
         visualize,
@@ -453,7 +468,7 @@ const CheckboxGroup = (props) => {
     const restoreTemporalAtContext = useCallback(
         context => {
             const keys = getCheckboxKeysAtTimelinePoint({
-                provenance: strategy,
+                provenance: clipping.temporalProvenance,
                 point:
                     provenanceMode === "interaction" &&
                     context?.point !== undefined
@@ -468,44 +483,12 @@ const CheckboxGroup = (props) => {
             });
         },
         [
-            strategy,
+            clipping.temporalProvenance,
             provenanceMode,
             restoreWidgetValue,
             id,
         ]
     );
-
-    const commitBrushRange = range => {
-        setBrushRange(range);
-        setBrushDisplayRange(range);
-        window.dispatchEvent(new CustomEvent(
-            "provenance-widgets",
-            {
-                detail: {
-                    id,
-                    widget: "checkbox-group",
-                    mode: provenanceMode,
-                    interaction: "brush-end",
-                    data: { selection: range },
-                },
-            }
-        ));
-    };
-
-    const handleBrushChange = event => {
-        const range = normalizeSelectionBrushRange(event.value);
-        setBrushDisplayRange(range);
-        if (shouldCommitSliderChange(event)) {
-            commitBrushRange(range);
-        }
-    };
-
-    const handleBrushEnd = event => {
-        const range = normalizeSelectionBrushRange(
-            event.value ?? brushDisplayRange
-        );
-        commitBrushRange(range);
-    };
 
     const renderedChildren = usesData
         ? optionData.map((option, index) => {
@@ -574,13 +557,16 @@ const CheckboxGroup = (props) => {
             selected: selection,
             setCheckboxValue,
             registerCheckbox,
-            provenance: strategy,
+            provenance: showTimeline ? clipping.temporalProvenance : clipping.aggregateProvenance,
             hasProvenance,
             visualize,
             mode: provenanceMode,
             showTimeline,
-            timeDomain,
-            brushRange,
+            timeDomain: clipping.timeDomain ?? timeDomain,
+            brushRange: clipping.brushRange,
+            clipping: clipping.enabled,
+            smoothing: props.scalability?.temporal_view?.strategy === "smoothing",
+            smoothingBlurRadius: props.scalability?.temporal_view?.smoothing_options?.blur_radius,
             tooltipLabel,
             restoreTemporalAtContext,
         }),
@@ -589,13 +575,17 @@ const CheckboxGroup = (props) => {
             selection,
             setCheckboxValue,
             registerCheckbox,
-            strategy,
+            clipping.temporalProvenance,
+            clipping.aggregateProvenance,
+            clipping.timeDomain,
             hasProvenance,
             visualize,
             provenanceMode,
             showTimeline,
             timeDomain,
-            brushRange,
+            clipping.brushRange,
+            clipping.enabled,
+            props.scalability?.temporal_view?.strategy,
             tooltipLabel,
             restoreTemporalAtContext,
         ]
@@ -618,7 +608,11 @@ const CheckboxGroup = (props) => {
                 className={className ?? styleClass}
                 style={style}
             >
-                {visualize && hasProvenance && showTimeline && (
+                {visualize &&
+                    hasProvenance &&
+                    showTimeline &&
+                    temporalBrush &&
+                    clipping.showTemporalAxis && (
                     <div
                         data-timeline-axis={id}
                         data-provenance-chart-target={id}
@@ -627,19 +621,32 @@ const CheckboxGroup = (props) => {
                             marginBottom: "12px",
                         }}
                     >
-                        {temporalBrush && (
+                        {clipping.zoomProps ? (
+                            <TemporalZoomBrush
+                                id={id}
+                                label={tooltipLabel}
+                                mode={provenanceMode}
+                                {...clipping.zoomProps}
+                            />
+                        ) : (
                             <TemporalRangeSlider
                                 id={id}
                                 label={tooltipLabel}
                                 mode={provenanceMode}
-                                value={brushDisplayRange}
-                                onChange={handleBrushChange}
-                                onSlideEnd={handleBrushEnd}
+                                {...clipping.sliderProps}
                             />
                         )}
                     </div>
                 )}
                 {renderedChildren}
+                {visualize && hasProvenance && showTimeline && clipping.zoomedDomain && (
+                    <CheckboxZoomAxis
+                        id={id}
+                        elementRef={elementRef}
+                        domain={clipping.zoomedDomain}
+                        mode={provenanceMode}
+                    />
+                )}
             </div>
         </CheckboxGroupContext.Provider>
     );

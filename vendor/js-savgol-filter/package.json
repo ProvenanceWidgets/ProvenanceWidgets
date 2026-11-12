@@ -1,0 +1,26 @@
+{
+  "name": "js-savgol-filter",
+  "version": "1.0.0",
+  "description": "Savitzky-Golay filter implementation.",
+  "main": "js-savgol-filter.js",
+  "scripts": {
+    "test": "mocha --reporter list",
+    "pretest": "eslint --ignore-path .gitignore ."
+  },
+  "keywords": [
+    "filter",
+    "savgol",
+    "savitzky-golay"
+  ],
+  "author": "gorlang",
+  "license": "MIT",
+  "dependencies": {
+    "jl-array1": "file:../jl-array1",
+    "ml-matrix": "^6.8.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.0.1",
+    "eslint-config-strongloop": "^2.1.0",
+    "mocha": "^9.1.3"
+  }
+}

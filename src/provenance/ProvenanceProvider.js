@@ -27,6 +27,30 @@ const ProvenanceProvider = ({ children }) => {
     const [widgetColors, setWidgetColors] = useState({})
     const [revertedValues, setRevertedValues] = useState({})
     const [activeTooltip, setActiveTooltip] = useState(null);
+    const sessionRegistryRef = useRef(new Map());
+    const session = useMemo(() => ({
+        has: key => sessionRegistryRef.current.get(key)?.shown === true,
+        isAccepted: key => sessionRegistryRef.current.get(key)?.accepted === true,
+        register: key => {
+            const state = sessionRegistryRef.current.get(key);
+            if (state?.shown) return false;
+            sessionRegistryRef.current.set(key, {
+                shown: true,
+                accepted: state?.accepted === true,
+            });
+            return true;
+        },
+        accept: key => {
+            const state = sessionRegistryRef.current.get(key) ?? {
+                shown: true,
+                accepted: false,
+            };
+            state.shown = true;
+            state.accepted = true;
+            sessionRegistryRef.current.set(key, state);
+            return true;
+        },
+    }), []);
 
     const unregisterWidget = useCallback((id, expectedRegistration) => {
         const currentRegistrations = widgetRegistrationsRef.current;
@@ -203,6 +227,7 @@ const ProvenanceProvider = ({ children }) => {
             setWidgetColors,
             setRevertedValues,
         },
+        session,
     }), [
         tooltipId,
         tooltip,
@@ -216,6 +241,7 @@ const ProvenanceProvider = ({ children }) => {
         getWidgetRegistration,
         restoreWidgetValue,
         focusWidget,
+        session,
     ])
 
     return (

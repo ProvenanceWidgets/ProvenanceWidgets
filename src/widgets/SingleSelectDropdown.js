@@ -1,3 +1,6 @@
+import useClippingBadge from "../shared/hooks/useClippingBadge.js";
+import TemporalZoomBrush from "../shared/components/TemporalZoomBrush.js";
+import CheckboxZoomAxis from "../shared/components/CheckboxZoomAxis.js";
 import { Dropdown as Dropdown_ } from "primereact/dropdown/dropdown.esm.js";
 import {
     useCallback,
@@ -39,13 +42,10 @@ import {
     singleSelectToProvenanceValue,
     singleSelectValueKey,
 } from "../shared/logic/singleSelectDropdownValue.js";
-import {
-    getSelectionTimeDomain,
-    normalizeSelectionBrushRange,
-} from "../shared/logic/selectionTimeline.js";
-import { shouldCommitSliderChange } from "../shared/logic/sliderInteraction.js";
+import { getSelectionTimeDomain } from "../shared/logic/selectionTimeline.js";
 import { resolveTemporalBrushEnabled } from "../shared/logic/sliderTemporal.js";
 import TemporalRangeSlider from "../shared/components/TemporalRangeSlider.js";
+import useCategoricalTemporalScalability from "../shared/hooks/useCategoricalTemporalScalability.js";
 
 const SingleSelectItem = ({
     children,
@@ -57,6 +57,9 @@ const SingleSelectItem = ({
     showTimeline,
     timeDomain,
     brushRange,
+    clipping,
+    smoothing,
+    smoothingBlurRadius,
     target,
     tooltipLabel,
     visualize,
@@ -136,11 +139,13 @@ const SingleSelectItem = ({
             style={{
                 ...aggregateTooltipProps.style,
                 position: "relative",
-                height: "32px",
+                height: "24px",
                 display: "flex",
                 alignItems: "center",
                 padding: "0 8px",
+                boxSizing: "border-box",
                 width: "100%",
+                minWidth: 0,
                 flex: 1,
             }}
         >
@@ -169,7 +174,7 @@ const SingleSelectItem = ({
                                         : "selectionIndex",
                             }}
                             width={containerWidth}
-                            height={32}
+                            height={24}
                             layout="checkbox"
                             style={{
                                 width: "100%",
@@ -182,10 +187,13 @@ const SingleSelectItem = ({
             {visualize &&
                 showTimeline &&
                 timelineData && (
-                    <div
+                    <div data-provenance-selection-track={"dropdown"}
                         style={{
                             position: "absolute",
-                            inset: 0,
+                            top: 0,
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
                             zIndex: 0,
                             display: "flex",
                             alignItems: "center",
@@ -197,6 +205,10 @@ const SingleSelectItem = ({
                             mode={mode}
                             timeDomain={timeDomain}
                             brushRange={brushRange}
+                            clipping={clipping}
+                            smoothing={smoothing}
+                            smoothingWholeBar
+                            smoothingBlurRadius={smoothingBlurRadius}
                             tooltipId={tooltip}
                             widgetId={tooltipLabel}
                             value={optionKey}
@@ -256,6 +268,7 @@ const SingleSelectDropdown = (props) => {
         dropdownProps = {},
         temporalBrush: temporalBrushProp,
         enableTemporalBrush,
+        scalability: scalabilityProp,
         ...primeProps
     } = props;
     const tooltipLabel = dataLabel ?? legacyDataLabel ?? id;
@@ -292,9 +305,6 @@ const SingleSelectDropdown = (props) => {
         restoreWidgetValue,
     } = useWidgetRegistry();
     const [showTimeline, setShowTimeline] = useState(false);
-    const [brushRange, setBrushRange] = useState([0, 100]);
-    const [brushDisplayRange, setBrushDisplayRange] =
-        useState([0, 100]);
     const elementRef = useRef(null);
     const dropdownRef = useRef(null);
     const propsRef = useRef(props);
@@ -336,6 +346,7 @@ const SingleSelectDropdown = (props) => {
             props.onProvenanceChange ?? props.provenanceChange,
         strategyFactory,
     });
+
     const [selection, setSelection] = useState(() =>
         provenanceValueToSingleSelect(
             currentValue,
@@ -345,6 +356,21 @@ const SingleSelectDropdown = (props) => {
     );
     const currentValueRef = useRef(currentValue);
     const selectionRef = useRef(selection);
+    const clipping = useCategoricalTemporalScalability({
+        id,
+        widget: "select",
+        mode: provenanceMode,
+        provenance: strategy,
+        scalability: scalabilityProp,
+        records: serializedProvenance.data,
+        elementRef,
+        temporalBrush,
+    });
+    const { message: clippingMessage, revision: clippingRevision } = useClippingBadge({
+        records: serializedProvenance.data, scalability: scalabilityProp,
+        width: clipping.width, mode: provenanceMode, showTimeline,
+    });
+
     const serializedProvenanceRef = useRef(serializedProvenance);
     currentValueRef.current = currentValue;
     selectionRef.current = selection;
@@ -484,6 +510,8 @@ const SingleSelectDropdown = (props) => {
             elementRef,
             getValue: () => selectionRef.current,
             setValue: applyRegisteredValue,
+            clippingMessage,
+            clippingRevision,
             visualize,
             mode: provenanceMode,
             focus: () => {
@@ -518,6 +546,8 @@ const SingleSelectDropdown = (props) => {
         applyRegisteredValue,
         registerWidget,
         notifyWidget,
+        clippingMessage,
+        clippingRevision,
         visualize,
         provenanceMode,
     ]);
@@ -619,38 +649,6 @@ const SingleSelectDropdown = (props) => {
         });
     };
 
-    const commitBrushRange = range => {
-        setBrushRange(range);
-        setBrushDisplayRange(range);
-        window.dispatchEvent(new CustomEvent(
-            "provenance-widgets",
-            {
-                detail: {
-                    id,
-                    widget: "select",
-                    mode: provenanceMode,
-                    interaction: "brush-end",
-                    data: { selection: range },
-                },
-            }
-        ));
-    };
-
-    const handleBrushChange = event => {
-        const range = normalizeSelectionBrushRange(event.value);
-        setBrushDisplayRange(range);
-        if (shouldCommitSliderChange(event)) {
-            commitBrushRange(range);
-        }
-    };
-
-    const handleBrushEnd = event => {
-        const range = normalizeSelectionBrushRange(
-            event.value ?? brushDisplayRange
-        );
-        commitBrushRange(range);
-    };
-
     const originalItemTemplate =
         dropdownProps.itemTemplate ??
         primeProps.itemTemplate;
@@ -684,8 +682,12 @@ const SingleSelectDropdown = (props) => {
             }}
         >
             <style>{`
+                .${safePanelClass} .p-dropdown-items {
+                    padding: 8px 24px !important;
+                }
                 .${safePanelClass} .p-dropdown-item {
                     padding: 0 !important;
+                    gap: 5px;
                 }
                 .${safePanelClass} .p-dropdown-item > span {
                     flex-grow: 1;
@@ -713,10 +715,16 @@ const SingleSelectDropdown = (props) => {
                 }}
                 panelClassName={panelClassName}
                 onShow={event => {
+                    window.dispatchEvent(new CustomEvent("provenance-panel-visibility", {
+                        detail: { target: id, open: true },
+                    }));
                     primeProps.onShow?.(event);
                     dropdownProps.onShow?.(event);
                 }}
                 onHide={event => {
+                    window.dispatchEvent(new CustomEvent("provenance-panel-visibility", {
+                        detail: { target: id, open: false },
+                    }));
                     primeProps.onHide?.(event);
                     dropdownProps.onHide?.(event);
                     if (showTimeline) {
@@ -751,12 +759,15 @@ const SingleSelectDropdown = (props) => {
                         <SingleSelectItem
                             option={option}
                             optionKey={optionKey}
-                            provenance={strategy}
+                            provenance={showTimeline ? clipping.temporalProvenance : clipping.aggregateProvenance}
                             hasProvenance={hasProvenance}
                             mode={provenanceMode}
                             showTimeline={showTimeline}
-                            timeDomain={timeDomain}
-                            brushRange={brushRange}
+                            timeDomain={clipping.timeDomain ?? timeDomain}
+                            brushRange={clipping.brushRange}
+                            clipping={clipping.enabled}
+                            smoothing={scalabilityProp?.temporal_view?.strategy === "smoothing"}
+                            smoothingBlurRadius={scalabilityProp?.temporal_view?.smoothing_options?.blur_radius}
                             target={id}
                             tooltipLabel={tooltipLabel}
                             visualize={visualize}
@@ -772,32 +783,50 @@ const SingleSelectDropdown = (props) => {
                 panelFooterTemplate={templateOptions => (
                     <>
                         {originalFooterTemplate?.(templateOptions)}
-                        {showTimeline && (
+                        {showTimeline && temporalBrush && clipping.showTemporalAxis && (
+                            <div style={{ padding: "0 8px 12px", boxSizing: "border-box" }}>
+                                <CheckboxZoomAxis
+                                    id={id}
+                                    elementRef={elementRef}
+                                    domain={clipping.zoomedDomain}
+                                    mode={provenanceMode}
+                                    panel
+                                />
+                            </div>
+                        )}
+                        {showTimeline && temporalBrush && clipping.showTemporalAxis && (
                             <div
                                 data-provenance-temporal-footer={id}
                                 style={{
                                     display: "flex",
                                     flexDirection: "column",
                                     width: "100%",
-                                    padding: "8px 20px 12px",
+                                    padding: "8px 24px 12px",
+                                    boxSizing: "border-box",
                                     gap: "6px",
                                     borderTop: "1px solid #ced4da",
                                     backgroundColor: "#fff",
                                 }}
                             >
-                                {temporalBrush && (
+                                {clipping.zoomProps ? (
+                                    <TemporalZoomBrush
+                                        id={id}
+                                        label={tooltipLabel}
+                                        mode={provenanceMode}
+                                        {...clipping.zoomProps}
+                                    />
+                                ) : (
                                     <TemporalRangeSlider
                                         id={id}
                                         label={tooltipLabel}
                                         mode={provenanceMode}
                                         placement="footer"
-                                        value={brushDisplayRange}
-                                        onChange={handleBrushChange}
-                                        onSlideEnd={handleBrushEnd}
+                                        {...clipping.sliderProps}
                                     />
                                 )}
                             </div>
                         )}
+
                     </>
                 )}
             />

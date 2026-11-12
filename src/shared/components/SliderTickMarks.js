@@ -18,6 +18,9 @@ const SliderTickMarks = ({
     ticksArray,
     values,
     formatValue,
+    labelMin = min,
+    labelMax = max,
+    labelPrecision,
     trackBottom = 24,
 }) => {
     const ticks = useMemo(
@@ -30,12 +33,15 @@ const SliderTickMarks = ({
         [min, max, step, tickStep, ticksArray]
     );
     const labels = useMemo(
-        () => buildSliderLabels({ min, max, values }),
-        [min, max, values]
+        () => buildSliderLabels({ min: labelMin, max: labelMax, values }),
+        [labelMin, labelMax, values]
     );
     const formatter = typeof formatValue === "function"
         ? formatValue
-        : value => String(value);
+        : value => String(labelPrecision !== undefined &&
+            (value === labelMin || value === labelMax)
+            ? Number(value.toFixed(labelPrecision))
+            : value);
 
     return (
         <div

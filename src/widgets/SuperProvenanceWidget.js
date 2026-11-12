@@ -7,6 +7,7 @@ import useProvenance from '../provenance/hooks/useProvenance.js';
 import useWidgetRegistry from '../provenance/hooks/useWidgetRegistry.js';
 import SuperProvenanceButton from '../shared/components/SuperProvenanceButton.js';
 import AggregateView from './AggregateView.js';
+import { resolveTemporalBrushEnabled } from '../shared/logic/sliderTemporal.js';
 
 const SuperProvenance = (props) => {
     const [, setRegisteredComponents] = useProvenance()
@@ -101,7 +102,12 @@ const SuperProvenance = (props) => {
     return (
         <div>
             {props.default && <div style={{ display: "flex", gap: 10, position: "relative" }}>
-                <SuperProvenanceButton prov={superProvenance} />
+                <SuperProvenanceButton
+                    id={props.id}
+                    prov={superProvenance}
+                    scalability={props.scalability}
+                    temporalBrush={resolveTemporalBrushEnabled(props)}
+                />
                 <AggregateView target={props.id} />
             </div>}
             {props.children}

@@ -1,5 +1,7 @@
 # widgets
 
+[Source layout](../README.md) · [Project README](../../README.md)
+
 - [`AggregateView.js`](./AggregateView.js): shows aggregate provenance across registered widgets.
 - [`Chart.js`](./Chart.js): renders aggregate and temporal provenance charts.
 - [`Checkbox.js`](./Checkbox.js): renders one checkbox inside a checkbox group.
@@ -14,3 +16,7 @@
 - [`SingleSlider.js`](./SingleSlider.js): tracks one numeric slider value.
 - [`SuperProvenanceWidget.js`](./SuperProvenanceWidget.js): coordinates provenance across multiple widgets.
 - [`TimelineVis.js`](./TimelineVis.js): renders selection history over time.
+
+`Rectangle2D.js` is an internal two-dimensional brush helper used by `Chart.js`.
+Public export spellings are defined in [src/index.ts](../index.ts), including
+`Singleslider`, `Rangeslider`, and `Radiobutton`; filenames are not export names.

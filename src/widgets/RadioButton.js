@@ -231,7 +231,7 @@ const Radiobutton = ({
                 {visualize &&
                     showTimeline &&
                     timelineData && (
-                        <div
+                        <div data-provenance-selection-track={radioGroup?.id}
                             style={{
                                 position: "absolute",
                                 inset: 0,
@@ -246,6 +246,10 @@ const Radiobutton = ({
                                 mode={provenanceMode}
                                 timeDomain={radioGroup?.timeDomain}
                                 brushRange={radioGroup?.brushRange}
+                                clipping={radioGroup?.clipping}
+                                smoothing={radioGroup?.smoothing}
+                                smoothingWholeBar
+                                smoothingBlurRadius={radioGroup?.smoothingBlurRadius}
                                 tooltipId={tooltip}
                                 widgetId={
                                     radioGroup?.tooltipLabel ??

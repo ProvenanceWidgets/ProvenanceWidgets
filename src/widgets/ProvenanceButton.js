@@ -1,3 +1,6 @@
+import { TEMPORAL_B64, AGGREGATE_B64, DISABLED_B64 } from "../shared/logic/footprintIcons.js";
+import { getClippingBadgeColor, CLIPPING_BADGE_BACKGROUND } from "../shared/logic/clippingBadgeColor.js";
+import { NO_HIDDEN_RECORDS } from "../shared/logic/scalability/strategies/clipping/clippingNotice.js";
 import { Button } from 'primereact/button/button.esm.js';
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
@@ -30,10 +33,13 @@ const footprintTooltipStyle = {
 
 const ProvenanceButton = ({ target }) => {
     const [open, setOpen] = useState()
+    const [panelOpen, setPanelOpen] = useState(false);
     const [registeredComponents] = useProvenance()
     const [widgetColors] = useWidgetColors()
     const { registrations } = useWidgetRegistry();
     const buttonRef = useRef(null);
+    const [overClippingBadge, setOverClippingBadge] = useState(false);
+    const clippingPopupOpen = overClippingBadge;
 
     const borderColor = widgetColors[target] || null;
     const haloColor = '#71e7fb';
@@ -55,9 +61,9 @@ const ProvenanceButton = ({ target }) => {
         };
     }, [target]);
 
-    const TEMPORAL_B64 = "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4NCjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+DQo8c3ZnIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgdmlld0JveD0iLTMgLTMgNjcuNDg3IDEwNiIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+DQogIDxnPg0KICA8cGF0aCBzdHJva2U9IiMyYzNlNTAiIHN0cm9rZS13aWR0aD0iNXB4IiBmaWxsPSIjMmMzZTUwIiBkPSJNMzcuMjY3LDgzLjY4MWMtMi4zNDYsNS45MzItNC4xMzMsMTQuMTgzLDIuNjU1LDE1Ljk5YzEwLjQyNywyLjc3MiwxMS45MDctMTIuODk2LDExLjkwNy0xMi44OTYNCglMMzcuMjY3LDgzLjY4MXoiLz4NCiAgPHBhdGggc3Ryb2tlPSIjMmMzZTUwIiBzdHJva2Utd2lkdGg9IjVweCIgZmlsbD0iIzJjM2U1MCIgZD0iTTYwLjc0Miw2My4zODZjMS41NTgtOC4xMTQsMS40NjctMjEuOTU3LTguMjcxLTI1LjM5NGMtMi40LTAuODQ4LTExLjQ2Ny0zLjAwNi0xNS4xMjYsMTIuOTU2DQoJYy0yLjY1MSwxMS42MTIsMS40ODgsMjUuNTM5LDEuNDg4LDI1LjUzOWwxNC43MjUsMy4xMzJDNTMuNTYsNzkuNjE4LDU5LjY5OCw2OC44MTQsNjAuNzQyLDYzLjM4NnoiLz4NCiAgPHBhdGggc3Ryb2tlPSIjMmMzZTUwIiBzdHJva2Utd2lkdGg9IjVweCIgZmlsbD0iIzJjM2U1MCIgZD0iTTIxLjM2Niw0Ny4zMTljMS43MTYsNi4xNDIsMi42MzMsMTQuNTM0LTQuMzExLDE1LjYyM0M2LjQsNjQuNjExLDYuNTY1LDQ4Ljg3NSw2LjU2NSw0OC44NzVMMjEuMzY2LDQ3LjMxOXoNCgkiLz4NCiAgPHBhdGggc3Ryb2tlPSIjMmMzZTUwIiBzdHJva2Utd2lkdGg9IjVweCIgZmlsbD0iIzJjM2U1MCIgZD0iTTAuMTQ2LDI0LjY3OUMtMC41NTUsMTYuNDQ3LDAuOTgsMi42OSwxMS4wMjgsMC4yODdDMTMuNS0wLjMwNiwyMi43NDEtMS41MDEsMjQuNzExLDE0Ljc1NQ0KCWMxLjQzMSwxMS44MjctNC4xNTEsMjUuMjQzLTQuMTUxLDI1LjI0M2wtMTQuOTcsMS41NzVDNS41ODksNDEuNTczLDAuNjEyLDMwLjE5LDAuMTQ2LDI0LjY3OXoiLz4NCiAgICA8L2c+DQo8L3N2Zz4="
-    const AGGREGATE_B64 = "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4NCjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+DQo8c3ZnIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgdmlld0JveD0iLTMgLTMgNjcuNDg3IDEwNiIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+DQogIDxnPg0KICA8cGF0aCBzdHJva2U9IiMyYzNlNTAiIHN0cm9rZS13aWR0aD0iNXB4IiBmaWxsPSJub25lIiBkPSJNMzcuMjY3LDgzLjY4MWMtMi4zNDYsNS45MzItNC4xMzMsMTQuMTgzLDIuNjU1LDE1Ljk5YzEwLjQyNywyLjc3MiwxMS45MDctMTIuODk2LDExLjkwNy0xMi44OTYNCglMMzcuMjY3LDgzLjY4MXoiLz4NCiAgPHBhdGggc3Ryb2tlPSIjMmMzZTUwIiBzdHJva2Utd2lkdGg9IjVweCIgZmlsbD0ibm9uZSIgZD0iTTYwLjc0Miw2My4zODZjMS41NTgtOC4xMTQsMS40NjctMjEuOTU3LTguMjcxLTI1LjM5NGMtMi40LTAuODQ4LTExLjQ2Ny0zLjAwNi0xNS4xMjYsMTIuOTU2DQoJYy0yLjY1MSwxMS42MTIsMS40ODgsMjUuNTM5LDEuNDg4LDI1LjUzOWwxNC43MjUsMy4xMzJDNTMuNTYsNzkuNjE4LDU5LjY5OCw2OC44MTQsNjAuNzQyLDYzLjM4NnoiLz4NCiAgPHBhdGggc3Ryb2tlPSIjMmMzZTUwIiBzdHJva2Utd2lkdGg9IjVweCIgZmlsbD0ibm9uZSIgZD0iTTIxLjM2Niw0Ny4zMTljMS43MTYsNi4xNDIsMi42MzMsMTQuNTM0LTQuMzExLDE1LjYyM0M2LjQsNjQuNjExLDYuNTY1LDQ4Ljg3NSw2LjU2NSw0OC44NzVMMjEuMzY2LDQ3LjMxOXoNCgkiLz4NCiAgPHBhdGggc3Ryb2tlPSIjMmMzZTUwIiBzdHJva2Utd2lkdGg9IjVweCIgZmlsbD0ibm9uZSIgZD0iTTAuMTQ2LDI0LjY3OUMtMC41NTUsMTYuNDQ3LDAuOTgsMi42OSwxMS4wMjgsMC4yODdDMTMuNS0wLjMwNiwyMi43NDEtMS41MDEsMjQuNzExLDE0Ljc1NQ0KCWMxLjQzMSwxMS44MjctNC4xNTEsMjUuMjQzLTQuMTUxLDI1LjI0M2wtMTQuOTcsMS41NzVDNS41ODksNDEuNTczLDAuNjEyLDMwLjE5LDAuMTQ2LDI0LjY3OXoiLz4NCiAgICA8L2c+DQo8L3N2Zz4="
-    const DISABLED_B64 = "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4NCjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+DQo8c3ZnIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgdmlld0JveD0iLTMgLTMgNjcuNDg3IDEwNiIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+DQogIDxnPg0KICAgIDxwYXRoIHN0cm9rZT0iIzdmOGM4ZCIgc3Ryb2tlLXdpZHRoPSI1cHgiIGZpbGw9Im5vbmUiIGQ9Ik0zNy4yNjcsODMuNjgxYy0yLjM0Niw1LjkzMi00LjEzMywxNC4xODMsMi42NTUsMTUuOTljMTAuNDI3LDIuNzcyLDExLjkwNy0xMi44OTYsMTEuOTA3LTEyLjg5NiBMMzcuMjY3LDgzLjY4MXoiLz4NCiAgICA8cGF0aCBzdHJva2U9IiM3ZjhjOGQiIHN0cm9rZS13aWR0aD0iNXB4IiBmaWxsPSJub25lIiBkPSJNNjAuNzQyLDYzLjM4NmMxLjU1OC04LjExNCwxLjQ2Ny0yMS45NTctOC4yNzEtMjUuMzk0Yy0yLjQtMC44NDgtMTEuNDY3LTMuMDA2LTE1LjEyNiwxMi45NTYgYy0yLjY1MSwxMS42MTIsMS40ODgsMjUuNTM5LDEuNDg4LDI1LjUzOWwxNC43MjUsMy4xMzJDNTMuNTYsNzkuNjE4LDU5LjY5OCw2OC44MTQsNjAuNzQyLDYzLjM4NnoiLz4NCiAgICA8cGF0aCBzdHJva2U9IiM3ZjhjOGQiIHN0cm9rZS13aWR0aD0iNXB4IiBmaWxsPSJub25lIiBkPSJNMjEuMzY2LDQ3LjMxOWMxLjcxNiw2LjE0MiwyLjYzMywxNC41MzQtNC4zMTEsMTUuNjIzQzYuNCw2NC42MTEsNi41NjUsNDguODc1LDYuNTY1LDQ4Ljg3NUwyMS4zNjYsNDcuMzE5eiIvPg0KICAgIDxwYXRoIHN0cm9rZT0iIzdmOGM4ZCIgc3Ryb2tlLXdpZHRoPSI1cHgiIGZpbGw9Im5vbmUiIGQ9Ik0wLjE0NiwyNC42NzlDLTAuNTU1LDE2LjQ0NywwLjk4LDIuNjksMTEuMDI4LDAuMjg3QzEzLjUtMC4zMDYsMjIuNzQxLTEuNTAxLDI0LjcxMSwxNC43NTUgYzEuNDMxLDExLjgyNy00LjE1MSwyNS4yNDMtNC4xNTEsMjUuMjQzbC0xNC45NywxLjU3NUM1LjU4OSw0MS41NzMsMC42MTIsMzAuMTkwLDAuMTQ2LDI0LjY3OXoiLz4NCiAgICA8bGluZSB4MT0iMCIgeTE9IjAiIHgyPSI2MCIgeTI9IjEwMCIgc3Ryb2tlPSIjN2Y4YzhkIiBzdHJva2Utd2lkdGg9IjUiLz4NCiAgPC9nPg0KPC9zdmc+"
+
+
+
 
     const provenance = registeredComponents.get(target);
     const registration = registrations.get(target);
@@ -70,6 +76,13 @@ const ProvenanceButton = ({ target }) => {
     const viewTooltip = getProvenanceButtonTooltip(buttonState);
     const safeTarget = String(target ?? "widget")
         .replace(/[^a-zA-Z0-9_-]/g, "-");
+    const clippingMessage = registration?.clippingMessage ?? null;
+    const showClippingBadge = Boolean(clippingMessage) && clippingMessage !== NO_HIDDEN_RECORDS;
+    const hasClippedHistory = showClippingBadge && clippingMessage !== NO_HIDDEN_RECORDS;
+    useEffect(() => {
+        setOverClippingBadge(false);
+    }, [target, showClippingBadge]);
+    const clippingTooltipId = `provenance-clipping-tooltip-${safeTarget}`;
     const viewTooltipId = `provenance-view-tooltip-${safeTarget}`;
     const viewTooltipLabel = viewTooltip
         ? [
@@ -138,6 +151,16 @@ const ProvenanceButton = ({ target }) => {
         }
     }, [open, target, isDropdown]);
 
+    // Panel visibility is separate from the aggregate/temporal view selection.
+    useEffect(() => {
+        setPanelOpen(false);
+        const handlePanelVisibility = event => {
+            if (event.detail?.target === target) setPanelOpen(Boolean(event.detail.open));
+        };
+        window.addEventListener("provenance-panel-visibility", handlePanelVisibility);
+        return () => window.removeEventListener("provenance-panel-visibility", handlePanelVisibility);
+    }, [target]);
+
     useEffect(() => {
         const handleVisibility = event => {
             if (event.detail?.target !== target) return;
@@ -147,10 +170,14 @@ const ProvenanceButton = ({ target }) => {
             "provenance-dropdown-visibility",
             handleVisibility
         );
-        return () => window.removeEventListener(
-            "provenance-dropdown-visibility",
+        window.addEventListener(
+            "provenance-timeline-visibility",
             handleVisibility
         );
+        return () => {
+            window.removeEventListener("provenance-dropdown-visibility", handleVisibility);
+            window.removeEventListener("provenance-timeline-visibility", handleVisibility);
+        };
     }, [target]);
 
     useEffect(() => {
@@ -178,12 +205,13 @@ const ProvenanceButton = ({ target }) => {
 
     const wrapperStyle = {
         display: "inline-block",
+        position: "relative",
         ...(borderColor ? { 
             border: `2px solid ${borderColor}`,
             borderRadius: "4px",
             padding: "0px"
         } : {}),
-        ...(open ? {
+        ...((open || panelOpen) && !isDisabled ? {
             boxShadow: `0 0 0 2px #fff, 0 0 0 4px ${haloColor}`
         } : {})
     };
@@ -199,42 +227,122 @@ const ProvenanceButton = ({ target }) => {
                 }
             `}</style>
             <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-                <div
-                    style={wrapperStyle}
-                    data-tooltip-id={viewTooltipId}
-                    data-tooltip-place="right"
-                    data-tooltip-delay-show={
-                        PROVENANCE_BUTTON_TOOLTIP_DELAY_MS
-                    }
-                    aria-label={viewTooltipLabel}
-                >
-                    <Button 
-                        ref={buttonRef} 
-                        className="provenance-button"
-                        aria-label={`Toggle provenance view for ${target}`}
-                        data-provenance-state={buttonState}
-                        data-tooltip-id={(!isSelectionGroup && !isDropdown) ? "open-tooltip-" + target : undefined}
-                        onClick={handleToggle} 
-                        disabled={isDisabled}
-                        style={buttonStyle} 
-                        text 
-                        icon={(options) => (
-                            <img 
-                                width={18} // Reduced icon size
-                                height={18} 
-                                src={getIcon()} 
+                <div style={{ position: 'relative' }}>
+                    <div
+                        style={wrapperStyle}
+                        data-tooltip-id={clippingMessage ? undefined : viewTooltipId}
+                        data-tooltip-place="right"
+                        data-tooltip-delay-show={
+                            PROVENANCE_BUTTON_TOOLTIP_DELAY_MS
+                        }
+                        aria-label={viewTooltipLabel}
+                    >
+                        <Button
+                            ref={buttonRef}
+                            className="provenance-button"
+                            data-tooltip-place="right"
+                            data-tooltip-delay-show={PROVENANCE_BUTTON_TOOLTIP_DELAY_MS}
+                            aria-label={`Toggle provenance view for ${target}`}
+                            data-provenance-state={buttonState}
+                            data-tooltip-id={(!isSelectionGroup && !isDropdown) ? "open-tooltip-" + target : clippingMessage ? viewTooltipId : undefined}
+                            onClick={handleToggle}
+                            disabled={isDisabled}
+                            style={buttonStyle}
+                            text
+                            icon={(options) => (
+                                <img
+                                    width={18} // Reduced icon size
+                                    height={18}
+                                    src={getIcon()}
+                                    style={{
+                                        filter: open ? 'brightness(0)' : 'none'
+                                    }}
+                                />
+                            )}
+                        />
+                    </div>
+                    {showClippingBadge && (
+                        <button
+                            type="button"
+                            aria-label={clippingMessage}
+                            aria-expanded={clippingPopupOpen}
+                            onPointerDown={event => event.stopPropagation()}
+                            onMouseEnter={() => setOverClippingBadge(true)}
+                            onMouseLeave={() => setOverClippingBadge(false)}
+                            onClick={event => {
+                                event.stopPropagation();
+                            }}
+                            data-provenance-clipping-notice={target}
+                            data-provenance-chart-target={target}
+                            data-tooltip-id={clippingTooltipId}
+                            data-tooltip-content={clippingMessage}
+                            style={{
+                                position: 'absolute', right: -5, bottom: -5,
+                                width: 16, height: 16, padding: 0, borderRadius: '50%',
+                                color: getClippingBadgeColor(), lineHeight: 0,
+                                background: CLIPPING_BADGE_BACKGROUND,
+                                border: '2px solid #fff',
+                                boxSizing: 'border-box', cursor: 'pointer', zIndex: 2,
+                                pointerEvents: 'auto',
+                            }}
+                        >
+                            <svg
+                                aria-hidden="true"
+                                focusable="false"
+                                viewBox="0 0 24 24"
+                                width="11"
+                                height="11"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
                                 style={{
-                                    filter: open ? 'brightness(0)' : 'none'
+                                    position: 'absolute', left: '50%', top: '50%',
+                                    transform: 'translate(-50%, -50%)', display: 'block',
+                                    pointerEvents: 'none',
                                 }}
-                            />
-                        )} 
-                    />
+                            >
+                                <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
+                                <circle cx="12" cy="12" r="2.5" />
+                                {hasClippedHistory && <path d="M4 3 20 21" />}
+                            </svg>
+                        </button>
+                    )}
                 </div>
+
+                {clippingMessage && typeof document !== 'undefined' && createPortal(
+                    <Tooltip
+                        id={clippingTooltipId}
+                        isOpen={clippingPopupOpen}
+                        hidden={!clippingPopupOpen}
+                        events={['hover']}
+                        clickable={false}
+                        place="right"
+                        positionStrategy="fixed"
+                        delayShow={0}
+                        delayHide={0}
+                        opacity={1}
+                        arrowColor={FOOTPRINT_TOOLTIP_BACKGROUND}
+                        style={{
+                            // Use the same compact metrics as the other simple React tooltips.
+                            zIndex: FOOTPRINT_TOOLTIP_Z_INDEX,
+                            backgroundColor: FOOTPRINT_TOOLTIP_BACKGROUND,
+                            color: '#fff',
+                            fontSize: '90%',
+                            fontWeight: 400,
+                            lineHeight: 'normal',
+                            pointerEvents: 'none',
+                        }}
+                    />,
+                    document.body
+                )}
 
                 {viewTooltip && typeof document !== 'undefined' &&
                     createPortal(
                         <Tooltip
                             id={viewTooltipId}
+                            hidden={clippingPopupOpen}
                             events={['hover']}
                             delayShow={PROVENANCE_BUTTON_TOOLTIP_DELAY_MS}
                             delayHide={0}

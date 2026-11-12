@@ -15,12 +15,18 @@ import useProvenanceController from "../provenance/hooks/useProvenanceController
 import useRevertedValue from "../provenance/hooks/useRevertedValue.js";
 import useWidgetRegistry from "../provenance/hooks/useWidgetRegistry.js";
 import useElementSize from "../shared/hooks/useElementSize.js";
+import useClippingBadge from "../shared/hooks/useClippingBadge.js";
 import useProvenanceTooltip from "../provenance/hooks/useProvenanceTooltip.js";
 import { generateRange } from "../shared/logic/valueMath.js";
 import Chart from "./Chart.js";
+import {
+    resolveRecordAggregateView,
+    resolveSliderAggregateSmoothing,
+} from "../shared/logic/scalability/index.js";
 import SliderTickMarks from "../shared/components/SliderTickMarks.js";
 import { shouldCommitSliderChange } from "../shared/logic/sliderInteraction.js";
 import SingleSliderBars from "../shared/components/SingleSliderBars.js";
+import SliderAggregateViewport from "../shared/components/SliderAggregateViewport.js";
 import {
     formatAggregateTooltip,
     getTooltipAnchorProps,
@@ -107,6 +113,31 @@ const Singleslider = (props) => {
         onProvenanceChange:
             props.onProvenanceChange ?? props.provenanceChange,
         strategyFactory,
+    });
+    const { aggregateProvenance } = useMemo(() => resolveRecordAggregateView({
+        records: serializedProvenance.data,
+        provenance: strategy,
+        strategyFactory,
+        scalability: props.scalability,
+        width: containerWidth,
+        mode: provenanceMode,
+    }), [serializedProvenance, strategy, strategyFactory, props.scalability, containerWidth, provenanceMode]);
+    const smoothingSamples = useMemo(() => resolveSliderAggregateSmoothing({
+        scalability: props.scalability,
+        records: serializedProvenance.data,
+        provenance: aggregateProvenance,
+        min, max, step,
+    }), [serializedProvenance, aggregateProvenance, props.scalability, min, max, step]);
+    const smoothingActive = smoothingSamples.length > 0;
+    const {
+        message: clippingMessage,
+        revision: clippingRevision,
+    } = useClippingBadge({
+        records: serializedProvenance.data,
+        scalability: props.scalability,
+        width: containerWidth,
+        mode: provenanceMode,
+        showTimeline: isDropdownVisible,
     });
     // Display value tracks the slider thumb position during a drag.
     // It follows intermediate onChange steps, while currentValue (from the
@@ -203,6 +234,8 @@ const Singleslider = (props) => {
             setValue: applyRegisteredValue,
             visualize,
             mode: provenanceMode,
+            clippingMessage,
+            clippingRevision,
             focus: () => {
                 const element = elementRef.current;
                 element?.scrollIntoView?.({
@@ -237,6 +270,8 @@ const Singleslider = (props) => {
         notifyWidget,
         visualize,
         provenanceMode,
+        clippingMessage,
+        clippingRevision,
     ]);
 
     useEffect(() => {
@@ -295,7 +330,14 @@ const Singleslider = (props) => {
                 position: "relative",
             }}
         >
-            <div
+            <SliderAggregateViewport
+                scalability={props.scalability}
+                min={min}
+                max={max}
+                width={containerWidth}
+                label={tooltipLabel}
+            >
+            {({ width: contentWidth, min: windowMin, max: windowMax, labelPrecision }) => <div
                 style={{
                     position: "relative",
                     width: "100%",
@@ -308,7 +350,7 @@ const Singleslider = (props) => {
                             position: "absolute",
                             left: 0,
                             bottom: `${trackBottom + 2}px`,
-                            width: containerWidth,
+                            width: contentWidth,
                             height: 50,
                         }}
                     >
@@ -320,12 +362,15 @@ const Singleslider = (props) => {
                             }}
                         >
                             <SingleSliderBars
-                                provenance={strategy}
+                                provenance={aggregateProvenance}
+                                smoothingSamples={smoothingSamples}
+                                smoothingMethod={props.scalability?.aggregate_view?.smoothing_options?.method?.type}
+                                smoothingGradientKey={`${props.id}-single`}
                                 orientationScheme={interpolateOranges}
                                 barKeys={barKeys}
                                 min={min}
                                 max={max}
-                                width={containerWidth}
+                                width={contentWidth}
                                 height={50}
                             />
                         </div>
@@ -336,8 +381,8 @@ const Singleslider = (props) => {
                                 pointerEvents: "none",
                             }}
                         >
-                            {barKeys.map(key => {
-                                const record = strategy.aggregateData?.get(key);
+                            {!smoothingActive && barKeys.map(key => {
+                                const record = aggregateProvenance.aggregateData?.get(key);
                                 if (!record) return null;
                                 const centerPercent = max === min
                                     ? 50
@@ -366,11 +411,11 @@ const Singleslider = (props) => {
                                         kind: "slider",
                                         sequenceIndex: Math.max(
                                             0,
-                                            (record.index ?? 1) - 1
+                                            (record.index ?? 1) - (aggregateProvenance.tooltipIndexOffset ?? 1)
                                         ),
                                         sequenceTotal: Math.max(
                                             0,
-                                            (strategy.detailedData?.size ?? 1) - 1
+                                            (aggregateProvenance.detailedData?.size ?? 0) - (aggregateProvenance.tooltipIndexOffset ?? 1)
                                         ),
                                     })
                                 );
@@ -448,11 +493,15 @@ const Singleslider = (props) => {
                         tickStep={tickStep}
                         ticksArray={ticksArray}
                         values={displayValue}
+                        labelMin={windowMin}
+                        labelMax={windowMax}
+                        labelPrecision={labelPrecision}
                         formatValue={options.translate}
                         trackBottom={trackBottom}
                     />
                 )}
-            </div>
+            </div>}
+            </SliderAggregateViewport>
 
             {visualize && isDropdownVisible && (
                 <div
@@ -474,11 +523,17 @@ const Singleslider = (props) => {
                     }}
                 >
                     <Chart
+                        widgetWidth={containerWidth}
                         target={props.id}
                         theme="light"
                         provenance={serializedProvenance}
                         mode={provenanceMode}
                         temporalBrush={temporalBrush}
+                        scalability={props.scalability}
+                        sliderStep={step}
+                        sliderShowTicks={showTicks}
+                        sliderTickStep={tickStep}
+                        sliderTicksArray={ticksArray}
                     />
                 </div>
             )}

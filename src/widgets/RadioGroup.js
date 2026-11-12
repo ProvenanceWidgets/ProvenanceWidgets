@@ -1,3 +1,6 @@
+import useClippingBadge from "../shared/hooks/useClippingBadge.js";
+import TemporalZoomBrush from "../shared/components/TemporalZoomBrush.js";
+import CheckboxZoomAxis from "../shared/components/CheckboxZoomAxis.js";
 import {
     Children,
     isValidElement,
@@ -29,13 +32,10 @@ import {
     resolveRadioGroupValue,
     restoreRadioGroupTemporalValue,
 } from "../shared/logic/radioGroupValue.js";
-import {
-    getSelectionTimeDomain,
-    normalizeSelectionBrushRange,
-} from "../shared/logic/selectionTimeline.js";
-import { shouldCommitSliderChange } from "../shared/logic/sliderInteraction.js";
+import { getSelectionTimeDomain } from "../shared/logic/selectionTimeline.js";
 import { resolveTemporalBrushEnabled } from "../shared/logic/sliderTemporal.js";
 import TemporalRangeSlider from "../shared/components/TemporalRangeSlider.js";
+import useCategoricalTemporalScalability from "../shared/hooks/useCategoricalTemporalScalability.js";
 
 export { useRadioGroup };
 
@@ -145,9 +145,6 @@ const RadioGroup = (props) => {
         restoreWidgetValue,
     } = useWidgetRegistry();
     const [showTimeline, setShowTimeline] = useState(false);
-    const [brushRange, setBrushRange] = useState([0, 100]);
-    const [brushDisplayRange, setBrushDisplayRange] =
-        useState([0, 100]);
     const elementRef = useRef(null);
     const propsRef = useRef(props);
     const availableOptionsRef = useRef(availableOptions);
@@ -192,6 +189,21 @@ const RadioGroup = (props) => {
     const [selection, setSelection] = useState(currentValue ?? null);
     const currentValueRef = useRef(currentValue);
     const selectionRef = useRef(selection);
+    const clipping = useCategoricalTemporalScalability({
+        id,
+        widget: "radio-group",
+        mode: provenanceMode,
+        provenance: strategy,
+        scalability: props.scalability,
+        records: serializedProvenance.data,
+        elementRef,
+        temporalBrush,
+    });
+    const { message: clippingMessage, revision: clippingRevision } = useClippingBadge({
+        records: serializedProvenance.data, scalability: props.scalability,
+        width: clipping.width, mode: provenanceMode, showTimeline,
+    });
+
     const serializedProvenanceRef = useRef(serializedProvenance);
     currentValueRef.current = currentValue;
     selectionRef.current = selection;
@@ -367,6 +379,8 @@ const RadioGroup = (props) => {
             elementRef,
             getValue: () => selectionRef.current,
             setValue: applyRegisteredValue,
+            clippingMessage,
+            clippingRevision,
             visualize,
             mode: provenanceMode,
             rendersOwnTemporalHeader: true,
@@ -399,6 +413,8 @@ const RadioGroup = (props) => {
         applyRegisteredValue,
         registerWidget,
         notifyWidget,
+        clippingMessage,
+        clippingRevision,
         visualize,
         provenanceMode,
     ]);
@@ -431,38 +447,6 @@ const RadioGroup = (props) => {
         }),
         [restoreWidgetValue, id]
     );
-
-    const commitBrushRange = range => {
-        setBrushRange(range);
-        setBrushDisplayRange(range);
-        window.dispatchEvent(new CustomEvent(
-            "provenance-widgets",
-            {
-                detail: {
-                    id,
-                    widget: "radio-group",
-                    mode: provenanceMode,
-                    interaction: "brush-end",
-                    data: { selection: range },
-                },
-            }
-        ));
-    };
-
-    const handleBrushChange = event => {
-        const range = normalizeSelectionBrushRange(event.value);
-        setBrushDisplayRange(range);
-        if (shouldCommitSliderChange(event)) {
-            commitBrushRange(range);
-        }
-    };
-
-    const handleBrushEnd = event => {
-        const range = normalizeSelectionBrushRange(
-            event.value ?? brushDisplayRange
-        );
-        commitBrushRange(range);
-    };
 
     const renderedChildren = usesData
         ? optionData.map((option, index) => {
@@ -525,19 +509,24 @@ const RadioGroup = (props) => {
         })
         : children;
 
+
+
     const contextValue = useMemo(
         () => ({
             id,
             selected: selection,
             selectValue,
             registerRadio,
-            provenance: strategy,
+            provenance: showTimeline ? clipping.temporalProvenance : clipping.aggregateProvenance,
             hasProvenance,
             visualize,
             mode: provenanceMode,
             showTimeline,
-            timeDomain,
-            brushRange,
+            timeDomain: clipping.timeDomain ?? timeDomain,
+            brushRange: clipping.brushRange,
+            clipping: clipping.enabled,
+            smoothing: props.scalability?.temporal_view?.strategy === "smoothing",
+            smoothingBlurRadius: props.scalability?.temporal_view?.smoothing_options?.blur_radius,
             tooltipLabel,
             restoreTemporalValue,
         }),
@@ -546,13 +535,17 @@ const RadioGroup = (props) => {
             selection,
             selectValue,
             registerRadio,
-            strategy,
+            clipping.temporalProvenance,
+            clipping.aggregateProvenance,
+            clipping.timeDomain,
             hasProvenance,
             visualize,
             provenanceMode,
             showTimeline,
             timeDomain,
-            brushRange,
+            clipping.brushRange,
+            clipping.enabled,
+            props.scalability?.temporal_view?.strategy,
             tooltipLabel,
             restoreTemporalValue,
         ]
@@ -575,7 +568,7 @@ const RadioGroup = (props) => {
                 className={className ?? styleClass}
                 style={style}
             >
-                {visualize && hasProvenance && showTimeline && (
+                {visualize && hasProvenance && showTimeline && temporalBrush && clipping.showTemporalAxis && (
                     <div
                         data-timeline-axis={id}
                         data-provenance-chart-target={id}
@@ -584,19 +577,27 @@ const RadioGroup = (props) => {
                             marginBottom: "12px",
                         }}
                     >
-                        {temporalBrush && (
+                        {clipping.zoomProps ? (
+                            <TemporalZoomBrush
+                                id={id}
+                                label={tooltipLabel}
+                                mode={provenanceMode}
+                                {...clipping.zoomProps}
+                            />
+                        ) : (
                             <TemporalRangeSlider
                                 id={id}
                                 label={tooltipLabel}
                                 mode={provenanceMode}
-                                value={brushDisplayRange}
-                                onChange={handleBrushChange}
-                                onSlideEnd={handleBrushEnd}
+                                {...clipping.sliderProps}
                             />
                         )}
                     </div>
                 )}
                 {renderedChildren}
+                {visualize && hasProvenance && showTimeline && clipping.zoomedDomain && (
+                    <CheckboxZoomAxis id={id} elementRef={elementRef} domain={clipping.zoomedDomain} mode={provenanceMode} />
+                )}
             </div>
         </RadioGroupContext.Provider>
     );
