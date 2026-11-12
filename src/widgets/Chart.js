@@ -1,3 +1,5 @@
+import TimelineVis from "./TimelineVis.js";
+import { rectangleZoomStyle, styleZoomBrush } from "../shared/components/brushAppearance.js";
 import {
     useCallback,
     useEffect,
@@ -24,41 +26,86 @@ import {
     restoreTemporalPoint,
 } from '../shared/logic/sliderTemporal.js';
 import {
+    brushSelectionToValueRange,
+    getTemporalAutoZoomRange,
+    resolveTemporalZoomActions,
+    isTemporalZoomToolVisible,
+    resolveTemporalZoomIn,
+    getInputTextAutoZoomRange,
+    getInputTextZoomDomain,
+    resolveInputTextTemporalZoom,
+    temporalTriggerMetric,
+    resolveRecordTemporalView,
+    getClippedTemporalYPositions,
+    resolveSliderTemporalSmoothing,
+} from "../shared/logic/scalability/index.js";
+import {
     buildInputTextTemporalEntries,
     restoreInputTextTemporalValue,
 } from '../shared/logic/inputTextValue.js';
+import {
+    buildSliderTicks,
+    getSliderPosition,
+} from '../shared/logic/sliderTicks.js';
+import ZoomedRangeAxis, {
+    ZOOM_AXIS_RIGHT_SPACE,
+    ZOOM_AXIS_TOP_SPACE,
+} from '../shared/components/ZoomedRangeAxis.js';
+import SliderTemporalSmoothingCurve from '../shared/components/SliderTemporalSmoothingCurve.js';
+import {
+    RectangleDerivedChart,
+    useRectangle2D,
+} from './Rectangle2D.js';
 
 const TEMPORAL_BRUSH_HEIGHT = 240;
 // Keep the plot height stable as the interaction history grows.
 const TEMPORAL_SLIDER_HEIGHT = 250;
 // Text history uses a taller fixed plot without an inner scrollbar.
 const INPUT_TEXT_TEMPORAL_HEIGHT = 440;
+const TEMPORAL_ZOOM_BRUSH_CROSS_AXIS_SIZE = 32;
 
 const TemporalBrush = ({
     height = TEMPORAL_BRUSH_HEIGHT,
+    interactionLabels,
+    interactive = true,
     mode,
+    onInteractionStart,
     onRangeChange,
+    offsetTop = 0,
     positions,
+    range,
+    syncRevision = 0,
     target,
-    tooltipId,
     widgetType,
 }) => {
     const brushRef = useRef(null);
+    const brushInstanceRef = useRef(null);
     const entryCount = positions.length;
+    const positionsKey = positions.join(",");
+    const positionsRef = useRef(positions);
+    positionsRef.current = positions;
+    const rangeRef = useRef(range);
+    rangeRef.current = range;
 
     useEffect(() => {
-        if (!brushRef.current || entryCount <= 1) return undefined;
+        if (!interactive || !brushRef.current || entryCount <= 1) return undefined;
 
+        const updateRange = event => {
+            const nextRange = brushSelectionToPositionRange(
+                event.selection,
+                positions
+            );
+            onRangeChange(nextRange);
+            return nextRange;
+        };
         const brush = d3
             .brushY()
             // Attach the brush to the y-axis and extend its hit area left.
-            .extent([[-42, 0], [0, height]])
+            .extent([[-TEMPORAL_ZOOM_BRUSH_CROSS_AXIS_SIZE, 0], [0, height]])
+            .on("start", () => onInteractionStart?.())
+            .on("brush", updateRange)
             .on("end", event => {
-                const range = brushSelectionToPositionRange(
-                    event.selection,
-                    positions
-                );
-                onRangeChange(range);
+                const range = updateRange(event);
                 if (typeof window !== "undefined") {
                     window.dispatchEvent(new CustomEvent(
                         "provenance-widgets",
@@ -78,38 +125,56 @@ const TemporalBrush = ({
                 }
             });
 
+        brushInstanceRef.current = brush;
+
         const brushGroup = d3.select(brushRef.current).call(brush);
-        brushGroup
-            .selectAll(".overlay")
-            .attr("fill", "rgba(113, 231, 251, 0.06)")
-            .style("cursor", "ns-resize");
-        brushGroup
-            .selectAll(".selection")
-            .attr("fill", "#71e7fb")
-            .attr("fill-opacity", 0.24)
-            .attr("stroke", "#17a2b8")
-            .attr("stroke-width", 1.5);
-        brushGroup
-            .selectAll(".handle")
-            .attr("fill", "#17a2b8")
-            .attr("fill-opacity", 0.8);
+        styleZoomBrush(brushGroup, "y");
         return () => {
             d3.select(brushRef.current).on(".brush", null);
+            brushInstanceRef.current = null;
         };
     }, [
         entryCount,
         height,
         mode,
         onRangeChange,
-        positions,
+        onInteractionStart,
+        positionsKey,
         target,
         widgetType,
+        interactive,
     ]);
 
-    if (entryCount <= 1) return null;
+    useEffect(() => {
+        if (!interactive || !brushRef.current || !brushInstanceRef.current) {
+            return;
+        }
+        const currentRange = rangeRef.current;
+        if (!Array.isArray(currentRange)) {
+            d3.select(brushRef.current).call(
+                brushInstanceRef.current.move,
+                null
+            );
+            return;
+        }
+
+        const start = Math.max(
+            0,
+            Math.min(positionsRef.current.length - 1, currentRange[0])
+        );
+        const end = Math.max(
+            start,
+            Math.min(positionsRef.current.length - 1, currentRange[1])
+        );
+        d3.select(brushRef.current).call(
+            brushInstanceRef.current.move,
+            [positionsRef.current[start], positionsRef.current[end]]
+        );
+    }, [interactive, positionsKey, syncRevision]);
+
     const tickStride = Math.max(1, Math.ceil(entryCount / 8));
     const ticks = positions
-        .map((position, index) => ({ position, index }))
+        .map((position, index) => ({ position, index, label: mode === "time" ? undefined : interactionLabels?.[index] }))
         .filter(({ index }) => (
             mode === "time"
                 ? index === 0 || index === entryCount - 1
@@ -118,24 +183,19 @@ const TemporalBrush = ({
                     index === entryCount - 1
                 )
         ));
-    const tooltipProps = getTooltipAnchorProps(
-        tooltipId,
-        "Drag vertically to zoom the history range. " +
-        "Click outside the selection to show all history."
-    );
-
     return (
         <div
-            {...tooltipProps}
             style={{
-                ...tooltipProps.style,
                 flex: "0 0 64px",
                 width: "64px",
+                marginTop: `${offsetTop}px`,
             }}
         >
             <svg
                 aria-label={
-                    `Drag vertically to zoom ${widgetType} history`
+                    interactive
+                        ? `Drag vertically to zoom ${widgetType} history`
+                        : `Complete ${widgetType} interaction range`
                 }
                 data-provenance-temporal-brush={target}
                 width="64"
@@ -143,7 +203,9 @@ const TemporalBrush = ({
                 style={{ display: "block", overflow: "visible" }}
             >
                 <title>
-                    Drag vertically to zoom; clear the selection to reset
+                    {interactive
+                        ? "Drag vertically to zoom; clear the selection to reset"
+                        : "Complete interaction range"}
                 </title>
                 <text
                     x="10"
@@ -155,9 +217,7 @@ const TemporalBrush = ({
                         `rotate(-90 10 ${height / 2})`
                     }
                 >
-                    {mode === "time"
-                        ? "time · drag to zoom"
-                        : "interaction · drag to zoom"}
+                    {`${mode === "time" ? "time" : "interaction"}${interactive ? " · drag to zoom" : ""}`}
                 </text>
                 <line
                     x1="58"
@@ -166,7 +226,7 @@ const TemporalBrush = ({
                     y2={height}
                     stroke="#6c757d"
                 />
-                {ticks.map(({ position, index }) => (
+                {ticks.map(({ position, index, label }) => (
                     <g key={index}>
                         <line
                             x1="52"
@@ -183,9 +243,9 @@ const TemporalBrush = ({
                             fontSize="10"
                             textAnchor="end"
                         >
-                            {mode === "time"
+                            {label ?? (mode === "time"
                                 ? index === 0 ? "t=0" : "now"
-                                : index}
+                                : index)}
                         </text>
                     </g>
                 ))}
@@ -195,6 +255,162 @@ const TemporalBrush = ({
     );
 };
 
+const TemporalValueBrush = ({
+    height = 64,
+    interactive = true,
+    max,
+    min,
+    step = 1,
+    tickStep,
+    ticksArray,
+    showTicks = false,
+    mode,
+    onInteractionStart,
+    onRangeChange,
+    target,
+    width,
+    widgetType,
+}) => {
+    const brushRef = useRef(null);
+    const ticks = showTicks
+        ? buildSliderTicks({
+            min,
+            max,
+            step: tickStep ?? step,
+            ticksArray,
+        })
+        : [];
+
+    useEffect(() => {
+        if (!interactive || !brushRef.current || !Number.isFinite(width) || width <= 0) {
+            return undefined;
+        }
+
+        const updateRange = event => {
+            const range = brushSelectionToValueRange(
+                event.selection,
+                width,
+                min,
+                max,
+                step
+            );
+            onRangeChange(range);
+            return range;
+        };
+        const brush = d3
+            .brushX()
+            // Leave the caption below the brush, as on the vertical axis.
+            .extent([
+                [0, 0],
+                [
+                    width,
+                    Math.max(1, height - TEMPORAL_ZOOM_BRUSH_CROSS_AXIS_SIZE),
+                ],
+            ])
+            .on("start", () => onInteractionStart?.())
+            .on("brush", updateRange)
+            .on("end", event => {
+                updateRange(event);
+                if (typeof window !== "undefined") {
+                    window.dispatchEvent(new CustomEvent(
+                        "provenance-widgets",
+                        {
+                            detail: {
+                                id: target,
+                                widget: widgetType,
+                                mode,
+                                interaction: "value-brush-end",
+                                data: { selection: event.selection },
+                            },
+                        }
+                    ));
+                }
+            });
+
+        const brushGroup = d3.select(brushRef.current).call(brush);
+        styleZoomBrush(brushGroup, "x");
+
+        return () => {
+            d3.select(brushRef.current).on(".brush", null);
+        };
+    }, [
+        height,
+        interactive,
+        max,
+        min,
+        mode,
+        onInteractionStart,
+        onRangeChange,
+        step,
+        target,
+        widgetType,
+        width,
+    ]);
+
+    return (
+        <div
+            data-provenance-values-brush={target}
+            data-provenance-temporal-values-brush={target}
+            style={{
+                width: "100%",
+                height: `${height}px`,
+            }}
+        >
+            <svg
+                aria-label={
+                    interactive
+                        ? `Drag horizontally to zoom ${widgetType} values`
+                        : `Complete ${widgetType} value range`
+                }
+                width="100%"
+                height={height}
+                style={{ display: "block", overflow: "visible" }}
+            >
+                <title>
+                    {interactive
+                        ? "Drag horizontally to zoom values; clear the selection to reset"
+                        : "Complete slider value range"}
+                </title>
+                <line x1="0" x2="100%" y1="8" y2="8" stroke="#6c757d" />
+                <text
+                    x="50%"
+                    y={height - 4}
+                    fill="#6c757d"
+                    fontSize="11"
+                    textAnchor="middle"
+                >
+                    {`values${interactive ? " · drag to zoom" : ""}`}
+                </text>
+                <g ref={brushRef} transform="translate(0,8)" />
+                {ticks.map(value => {
+                    const position = getSliderPosition(value, min, max);
+                    return (
+                        <g key={`value-tick-${value}`}>
+                            <line
+                                x1={`${position}%`}
+                                x2={`${position}%`}
+                                y1="8"
+                                y2="16"
+                                stroke="#6c757d"
+                            />
+                            <text
+                                x={`${position}%`}
+                                y="29"
+                                fill="#6c757d"
+                                fontSize="10"
+                                textAnchor="middle"
+                            >
+                                {value}
+                            </text>
+                        </g>
+                    );
+                })}
+            </svg>
+        </div>
+    );
+};
+
+
 const Chart = ({
     target,
     part = "full",
@@ -203,22 +419,119 @@ const Chart = ({
     provenanceStrategy,
     mode = "interaction",
     temporalBrush = true,
+    scalability,
+    widgetWidth = 0,
+    sliderStep = 1,
+    sliderShowTicks = false,
+    sliderTickStep,
+    sliderTicksArray,
 }) => {
     const chartRef = useRef(null);
     const [registeredComponents] = useProvenance();
     const { restoreWidgetValue } = useWidgetRegistry();
     const tooltipId = useProvenanceTooltip();
     const [brushRange, setBrushRange] = useState(null);
+    const [brushSyncRevision, setBrushSyncRevision] = useState(0);
+    const [valueBrushRange, setValueBrushRange] = useState(null);
+    const [valueBrushWidth, setValueBrushWidth] = useState(0);
+    const valueBrushContainerRef = useRef(null);
+    const rectangleGeometryRef = useRef({
+        width: 0,
+        height: 0,
+        points: [],
+        domainMin: 0,
+        domainMax: 1,
+    });
+    const temporalZoom = useMemo(
+        () => resolveTemporalZoomIn(scalability),
+        [scalability]
+    );
+    const temporalZoomKey = [
+        temporalZoom.enabled,
+        temporalZoom.modes.join(","),
+        temporalZoom.visibility,
+        temporalZoom.trigger.type ?? "",
+        temporalZoom.trigger.threshold ?? "",
+        temporalZoom.trigger.auto_zoom ?? "",
+    ].join("|");
+    const rectangleConfigured =
+        temporalZoom.enabled &&
+        temporalZoom.modes.includes("interactions-values");
+    const {
+        clear: clearRectangleSelection,
+        handleMouseDown: handleRectangleMouseDown,
+        dragMode: rectangleDragMode,
+        points: rectanglePoints,
+        selection: rectangleSelection,
+        valueDomain: rectangleValueDomain,
+    } = useRectangle2D({
+        enabled: rectangleConfigured,
+        geometryRef: rectangleGeometryRef,
+    });
+    const previousTemporalEntryCountRef = useRef(0);
+    const autoZoomTriggeredRef = useRef(false);
+    const lastTemporalMetricRef = useRef(null);
     const handleBrushRangeChange = useCallback(
-        range => setBrushRange(range),
-        []
+        range => {
+            clearRectangleSelection();
+            setBrushRange(currentRange => (
+                Array.isArray(currentRange) &&
+                Array.isArray(range) &&
+                currentRange[0] === range[0] &&
+                currentRange[1] === range[1]
+                    ? currentRange
+                    : range
+            ));
+        },
+        [clearRectangleSelection]
+    );
+    const handleValueBrushRangeChange = useCallback(
+        range => {
+            clearRectangleSelection();
+            setValueBrushRange(currentRange => (
+                Array.isArray(currentRange) &&
+                Array.isArray(range) &&
+                currentRange[0] === range[0] &&
+                currentRange[1] === range[1]
+                    ? currentRange
+                    : range
+            ));
+        },
+        [clearRectangleSelection]
     );
 
     useEffect(() => {
         setBrushRange(null);
-    }, [target, temporalBrush]);
+        setValueBrushRange(null);
+        clearRectangleSelection();
+        setBrushSyncRevision(revision => revision + 1);
+        previousTemporalEntryCountRef.current = 0;
+        lastTemporalMetricRef.current = null;
+        autoZoomTriggeredRef.current = false;
+    }, [clearRectangleSelection, target, temporalBrush, temporalZoomKey]);
+
+    useEffect(() => {
+        const element = valueBrushContainerRef.current;
+        if (!element) return undefined;
+        const updateWidth = () => setValueBrushWidth(element.clientWidth);
+        updateWidth();
+        if (typeof ResizeObserver === "undefined") {
+            window.addEventListener("resize", updateWidth);
+            return () => window.removeEventListener("resize", updateWidth);
+        }
+        const observer = new ResizeObserver(updateWidth);
+        observer.observe(element);
+        return () => observer.disconnect();
+    }, [
+        provenance,
+        provenanceStrategy,
+        registeredComponents,
+        scalability,
+        target,
+        temporalBrush,
+    ]);
     
-    const chartData = useMemo(() => {
+    const sourceChartData = useMemo(() => {
         if (!target) return null;
 
         const componentData = provenanceStrategy ?? (
@@ -533,10 +846,10 @@ const Chart = ({
             ).sort((a, b) => a[0] - b[0]);
 
             const sequenceOffset = componentData.tooltipIndexOffset ?? 1;
-            const sequenceTotal = sorted.filter(([, record]) =>
-                record.kind === undefined ||
-                record.kind === "interaction"
-            ).length - sequenceOffset;
+            const hasRecordKinds = sorted.some(([, record]) => record.kind !== undefined);
+            const sequenceTotal = hasRecordKinds
+                ? sorted.filter(([, record]) => record.kind === "interaction").length
+                : Math.max(0, sorted.length - sequenceOffset);
             let interactionIndex = 0;
             const transformedData = sorted.map(([, record]) => {
                 if (
@@ -553,10 +866,9 @@ const Chart = ({
                     time: record.time,
                     kind: record.kind,
                     source: record.source,
-                    sequenceIndex: Math.max(
-                        0,
-                        interactionIndex - sequenceOffset
-                    ),
+                    sequenceIndex: hasRecordKinds
+                        ? interactionIndex
+                        : Math.max(0, interactionIndex - sequenceOffset),
                     sequenceTotal: Math.max(0, sequenceTotal),
                 }]];
             });
@@ -596,6 +908,136 @@ const Chart = ({
         mode,
     ]);
 
+    const clipping = useMemo(() => resolveRecordTemporalView({
+        entries: sourceChartData?.isInputText
+            ? sourceChartData.inputTextEntries
+            : sourceChartData?.isSingleSlider || sourceChartData?.isRangeSlider
+                ? sourceChartData.detailedDataEntries
+                : [],
+        scalability,
+        width: widgetWidth,
+        mode,
+    }), [sourceChartData, scalability, widgetWidth, mode]);
+    const chartData = useMemo(() => {
+        if (!clipping.enabled || !sourceChartData) return sourceChartData;
+        if (sourceChartData.isInputText) {
+            return { ...sourceChartData, inputTextEntries: clipping.entries };
+        }
+        if (sourceChartData.isSingleSlider || sourceChartData.isRangeSlider) {
+            return { ...sourceChartData, detailedDataEntries: clipping.entries };
+        }
+        return sourceChartData;
+    }, [sourceChartData, clipping]);
+    const inputTextZoom = useMemo(() => resolveInputTextTemporalZoom({
+        entries: chartData?.isInputText
+            ? chartData.inputTextEntries
+            : [],
+        config: temporalZoom,
+        temporalBrush: normalizeTemporalBrush(temporalBrush),
+    }), [chartData, temporalBrush, temporalZoom]);
+
+    useEffect(() => {
+        setBrushRange(null);
+        setValueBrushRange(null);
+        clearRectangleSelection();
+        setBrushSyncRevision(revision => revision + 1);
+    }, [clipping.resetKey, clearRectangleSelection]);
+
+    useEffect(() => {
+        const isTemporalSlider = chartData?.isCheckboxGroup && (
+            chartData.isSingleSlider || chartData.isRangeSlider
+        );
+        const isTemporalInputText = Boolean(
+            chartData?.isInputText && inputTextZoom.enabled
+        );
+        const isTemporalRecordChart =
+            isTemporalSlider || isTemporalInputText;
+        const entries = isTemporalSlider
+            ? chartData.detailedDataEntries
+            : isTemporalInputText
+                ? chartData.inputTextEntries
+                : [];
+        const triggerEntries = isTemporalInputText
+            ? inputTextZoom.triggerEntries
+            : entries;
+        const entryCount = isTemporalRecordChart ? entries.length : 0;
+        const previousEntryCount = previousTemporalEntryCountRef.current;
+        const historyReset = entryCount < previousEntryCount;
+        const currentMetric = temporalTriggerMetric(
+            triggerEntries,
+            temporalZoom.trigger.type
+        );
+        const { shouldAutoZoom } = resolveTemporalZoomActions({
+            entries: triggerEntries,
+            trigger: temporalZoom.trigger,
+            previousMetric: historyReset
+                ? 0
+                : lastTemporalMetricRef.current,
+            enabled: isTemporalInputText
+                ? inputTextZoom.enabled && temporalZoom.visibility !== "off"
+                : isTemporalSlider && normalizeTemporalBrush(temporalBrush) &&
+                    temporalZoom.enabled && temporalZoom.modes.includes("interactions"),
+            alreadyAutoZoomed: historyReset
+                ? false
+                : autoZoomTriggeredRef.current,
+        });
+
+        if (historyReset) {
+            setBrushRange(null);
+            clearRectangleSelection();
+            autoZoomTriggeredRef.current = false;
+            lastTemporalMetricRef.current = null;
+        }
+
+        if (shouldAutoZoom) {
+            autoZoomTriggeredRef.current = true;
+            setBrushRange(isTemporalInputText
+                ? getInputTextAutoZoomRange(entries, temporalZoom.trigger)
+                : getTemporalAutoZoomRange(entries, temporalZoom.trigger));
+            setBrushSyncRevision(revision => revision + 1);
+        } else if (historyReset) {
+            setBrushSyncRevision(revision => revision + 1);
+        } else if (entryCount > previousEntryCount) {
+            clearRectangleSelection();
+            setBrushRange(currentRange => {
+                if (
+                    !Array.isArray(currentRange) ||
+                    currentRange.length !== 2 ||
+                    previousEntryCount <= 0
+                ) {
+                    return currentRange;
+                }
+
+                // Keep a window that was anchored at "now" anchored to the
+                // new latest interaction without growing its interaction
+                // count. A window ending earlier remains a fixed historical
+                // slice.
+                const wasAnchoredAtEnd =
+                    currentRange[1] >= previousEntryCount - 1;
+                if (!wasAnchoredAtEnd) return currentRange;
+
+                const windowSpan = Math.max(
+                    0,
+                    currentRange[1] - currentRange[0]
+                );
+                const nextEnd = entryCount - 1;
+                const nextStart = Math.max(0, nextEnd - windowSpan);
+                return [nextStart, nextEnd];
+            });
+            setBrushSyncRevision(revision => revision + 1);
+        }
+
+        previousTemporalEntryCountRef.current = entryCount;
+        lastTemporalMetricRef.current = currentMetric;
+    }, [
+        chartData,
+        clearRectangleSelection,
+        inputTextZoom,
+        temporalBrush,
+        temporalZoom,
+        temporalZoomKey,
+    ]);
+
     if (!chartData) return null;
 
     if (chartData.isCheckboxGroup) {
@@ -607,7 +1049,47 @@ const Chart = ({
         const brushEnabled =
             (chartData.isSingleSlider || chartData.isRangeSlider) &&
             normalizeTemporalBrush(temporalBrush) &&
-            allSortedEntries.length > 1;
+            allSortedEntries.length > 1 &&
+            temporalZoom.enabled &&
+            temporalZoom.modes.includes("interactions") &&
+            isTemporalZoomToolVisible({
+                entries: allSortedEntries,
+                visibility: temporalZoom.visibility,
+                trigger: temporalZoom.trigger,
+            });
+        const valueBrushEnabled =
+            (chartData.isSingleSlider || chartData.isRangeSlider) &&
+            normalizeTemporalBrush(temporalBrush) &&
+            temporalZoom.enabled &&
+            temporalZoom.modes.includes("values") &&
+            isTemporalZoomToolVisible({
+                entries: allSortedEntries,
+                visibility: temporalZoom.visibility,
+                trigger: temporalZoom.trigger,
+            });
+        const rectangleToolEnabled =
+            rectangleConfigured &&
+            normalizeTemporalBrush(temporalBrush) &&
+            (chartData.isSingleSlider || chartData.isRangeSlider) &&
+            isTemporalZoomToolVisible({
+                entries: allSortedEntries,
+                visibility: temporalZoom.visibility,
+                trigger: temporalZoom.trigger,
+            });
+        const showInteractionAxis =
+            (chartData.isSingleSlider || chartData.isRangeSlider) &&
+            normalizeTemporalBrush(temporalBrush);
+        const showValueAxis =
+            (chartData.isSingleSlider || chartData.isRangeSlider) &&
+            normalizeTemporalBrush(temporalBrush);
+        const reserveValueZoomAxisSpace =
+            showValueAxis &&
+            temporalZoom.enabled &&
+            temporalZoom.modes.includes("values");
+        const reserveInteractionZoomAxisSpace =
+            showInteractionAxis &&
+            temporalZoom.enabled &&
+            temporalZoom.modes.includes("interactions");
         const sortedEntries = brushEnabled
             ? filterTemporalEntries(allSortedEntries, brushRange)
             : allSortedEntries;
@@ -622,49 +1104,38 @@ const Chart = ({
         const brushYPositions = getTemporalYPositions(
             allSortedEntries,
             chartData.mode ?? mode,
-            TEMPORAL_BRUSH_HEIGHT
+            temporalPlotHeight
         );
         const allInputTextEntries = chartData.inputTextEntries ?? [];
         const inputTextBrushEnabled =
-            normalizeTemporalBrush(temporalBrush) &&
-            allInputTextEntries.length > 1;
+            !clipping.enabled &&
+            inputTextZoom.visible;
+        const reserveInputTextZoomAxisSpace = inputTextZoom.enabled;
         const inputTextEntries = inputTextBrushEnabled
             ? filterTemporalEntries(allInputTextEntries, brushRange)
             : allInputTextEntries;
         const inputTextPlotHeight = INPUT_TEXT_TEMPORAL_HEIGHT;
-        const inputTextYPositions = getTemporalYPositions(
-            inputTextEntries,
-            mode,
-            inputTextPlotHeight
-        );
-        const inputTextBrushYPositions = getTemporalYPositions(
-            allInputTextEntries,
-            mode,
-            inputTextPlotHeight
-        );
-        const inputTextSequenceMax = Math.max(
-            0,
-            inputTextEntries.length - 1
-        );
-        const inputTextTicks = inputTextSequenceMax === 0
-            ? [0]
-            : mode === "time"
-                ? [0, inputTextSequenceMax]
-                : d3.ticks(0, inputTextSequenceMax, 10);
-        const inputTextTickFormat = mode === "time"
-            ? value => value === 0 ? "t=0" : "now"
-            : inputTextSequenceMax === 0
-                ? () => "0"
-                : d3.tickFormat(0, inputTextSequenceMax, 10);
-        const getInputTextTickY = value => {
-            if (inputTextSequenceMax === 0) {
-                return inputTextPlotHeight / 2;
-            }
-            return 8 + (
-                (value / inputTextSequenceMax) *
-                (inputTextPlotHeight - 16)
+        const inputTextYPositions = clipping.enabled
+            ? getClippedTemporalYPositions(clipping, inputTextPlotHeight)
+            : getTemporalYPositions(
+                inputTextEntries,
+                mode,
+                inputTextPlotHeight
             );
-        };
+        const inputTextBrushYPositions = clipping.enabled
+            ? inputTextYPositions
+            : getTemporalYPositions(
+                allInputTextEntries,
+                mode,
+                inputTextPlotHeight
+            );
+        const inputTextZoomDomain = inputTextBrushEnabled
+            ? getInputTextZoomDomain(
+                allInputTextEntries,
+                brushRange,
+                mode
+            )
+            : null;
         
         let calculatedMax = 0;
         for (const [, records] of sortedEntries) {
@@ -676,6 +1147,21 @@ const Chart = ({
         
         const domainMax = indexDomain ? indexDomain[1] : 0;
         const domainMin = indexDomain ? indexDomain[0] : 0;
+        const valueDomainMin = valueBrushRange?.[0] ?? domainMin;
+        const valueDomainMax = valueBrushRange?.[1] ?? domainMax;
+        const interactionZoomRange = (
+            Array.isArray(brushRange) &&
+            brushRange.length === 2 &&
+            allSortedEntries.length > 0
+        )
+            ? [brushRange[0], brushRange[1]].map(index => {
+                const clampedIndex = Math.max(0, Math.min(
+                    allSortedEntries.length - 1,
+                    index
+                ));
+                return allSortedEntries[clampedIndex][1][0].sequenceIndex;
+            })
+            : null;
         const usesContinuousDomain =
             chartData.isRangeSlider ||
             chartData.isSingleSlider ||
@@ -690,41 +1176,103 @@ const Chart = ({
             ? baseMaxIndex
             : baseMaxIndex + 1;
         const minIndex = usesContinuousDomain ? domainMin : 0;
-        const rangeSpan = maxIndex - minIndex;
+        const rangeSpan = Math.max(valueDomainMax - valueDomainMin, 1e-9);
+        const temporalSmoothing = chartData.isSingleSlider || chartData.isRangeSlider
+            ? resolveSliderTemporalSmoothing({
+                scalability,
+                entries: sortedEntries,
+                mode: chartData.mode ?? mode,
+                range: chartData.isRangeSlider,
+                min: domainMin,
+                max: domainMax,
+            })
+            : { active: false, method: "savgol", samples: [] };
+        const temporalSmoothingStops = temporalSmoothing.samples.map((sample, index) => ({
+            offset: sample.offset,
+            color: d3.interpolateOranges(
+                0.3 + ((index / (temporalSmoothing.samples.length - 1 || 1)) * 0.7)
+            ),
+        }));
         const temporalSliderConnections = buildTemporalSliderConnections({
             entries: sortedEntries,
             yPositions: temporalYPositions,
-            domainMin: minIndex,
-            domainMax: maxIndex,
+            domainMin: valueDomainMin,
+            domainMax: valueDomainMax,
             range: chartData.isRangeSlider,
         });
-        const indexOffset = usesContinuousDomain ? 0 : 1;
-        const displayMaxIndex = Math.max(maxIndex - indexOffset, 1);
-        const displaySpan = displayMaxIndex - minIndex;
+
+        const rectanglePointData = [];
+        if (chartData.isRangeSlider || chartData.isSingleSlider) {
+            sortedEntries.forEach(([label, records], entryIndex) => {
+                records.forEach(record => {
+                    if (!record?.select) return;
+                    const addPoint = (endpoint, value) => {
+                        if (!Number.isFinite(Number(value))) return;
+                        const x = 6 + (
+                            ((Number(value) - valueDomainMin) / rangeSpan) *
+                            Math.max(valueBrushWidth - 12, 1)
+                        );
+                        rectanglePointData.push({
+                            entryIndex,
+                            endpoint,
+                            label,
+                            record,
+                            value: Number(value),
+                            x,
+                            y: temporalYPositions[entryIndex],
+                        });
+                    };
+                    if (chartData.isRangeSlider) {
+                        const lowValue = Array.isArray(record.value)
+                            ? record.value[0]
+                            : record.select.index;
+                        const highValue = Array.isArray(record.value)
+                            ? record.value[1]
+                            : record.unselect?.index ?? maxIndex;
+                        addPoint("low", lowValue);
+                        addPoint("high", highValue);
+                    } else {
+                        addPoint(
+                            "low",
+                            Array.isArray(record.value)
+                                ? record.value[0]
+                                : record.value ?? record.select.index
+                        );
+                    }
+                });
+            });
+        }
+
+        rectangleGeometryRef.current = {
+            width: valueBrushWidth,
+            height: temporalPlotHeight,
+            points: rectanglePointData,
+            domainMin: valueDomainMin,
+            domainMax: valueDomainMax,
+        };
 
         const isLight = theme === "light";
         const bgColor = isLight ? "#fff" : "#333";
         const textColor = isLight ? "#000" : "#eee"; // Or white
         const axisColor = isLight ? "#ccc" : "#555";
         const labelColor = isLight ? "#333" : "#ccc"; // For n=0, now labels
-        const rowBg = isLight ? "#f5f5f5" : "#444"; // Background for timeline track
 
         const renderHeader = () => {
             if (chartData.isInputText) return null;
             const hasLeftAxisLabel = chartData.isRangeSlider || chartData.isSingleSlider;
-            const brushWidth = brushEnabled ? 64 : 0;
+            const brushWidth = showInteractionAxis ? 64 : 0;
             const leftLabelWidth = hasLeftAxisLabel
-                ? brushEnabled ? brushWidth : 28
+                ? showInteractionAxis ? brushWidth : 28
                 : 0;
             // TemporalBrush already occupies the complete body gutter. The
             // compact vertical label is the only variant with an 8px gap.
-            const leftLabelGap = hasLeftAxisLabel && !brushEnabled ? 8 : 0;
+            const leftLabelGap = hasLeftAxisLabel && !showInteractionAxis ? 8 : 0;
             const plotInset = hasLeftAxisLabel ? 6 : 0;
             const totalLeftGutter = leftLabelWidth + leftLabelGap + plotInset;
             const totalRightInset = plotInset;
             const innerWidthCalc = `calc(100% - ${totalLeftGutter + totalRightInset}px)`;
             const innerMarginLeft = `${totalLeftGutter}px`;
-            
+            return (<div></div>)
             return (
                 <div
                     data-provenance-chart-target={target}
@@ -740,13 +1288,13 @@ const Chart = ({
                                    chartData.isRangeSlider ||
                                    chartData.isSingleSlider
                                )
-                                   ? minIndex
+                                   ? valueDomainMin
                                    : "n=0"}
                         </span>
                         <span style={{ fontSize: '12px', color: labelColor, fontWeight: 'bold', transform: hasLeftAxisLabel ? 'translateX(50%)' : undefined }}>
                            {chartData.isRangeSlider ||
                            chartData.isSingleSlider
-                               ? maxIndex
+                               ? valueDomainMax
                                : "now"}
                         </span>
                     </div>
@@ -764,97 +1312,59 @@ const Chart = ({
                     overflow: "visible",
                 }}
             >
-                {inputTextBrushEnabled ? (
-                    <TemporalBrush
-                        height={inputTextPlotHeight}
-                        mode={mode}
-                        onRangeChange={handleBrushRangeChange}
-                        positions={inputTextBrushYPositions}
-                        target={target}
-                        tooltipId={tooltipId}
-                        widgetType="input-text"
-                    />
-                ) : (
-                <div
-                    style={{
-                        position: "relative",
-                        flex: "0 0 48px",
-                        height: `${inputTextPlotHeight}px`,
-                        color: "#6c757d",
-                    }}
-                >
-                    <div
-                        style={{
-                            position: "absolute",
-                            inset: "8px auto 8px 0",
-                            writingMode: "vertical-rl",
-                            transform: "rotate(180deg)",
-                            fontSize: "11px",
-                            fontWeight: "bold",
-                            textAlign: "center",
-                        }}
-                    >
-                        {mode === "time"
-                            ? "time"
-                            : "Sequence of Interaction (0 = first)"}
-                    </div>
-                    <svg
-                        aria-hidden="true"
-                        width="60"
-                        height={inputTextPlotHeight}
-                        style={{
-                            position: "absolute",
-                            inset: "0 auto 0 0",
-                            overflow: "visible",
-                            pointerEvents: "none",
-                        }}
-                    >
-                        <line
-                            x1="60"
-                            x2="60"
-                            y1="8"
-                            y2={inputTextPlotHeight - 8}
-                            stroke="#495057"
-                            strokeWidth="1"
-                        />
-                        {inputTextTicks.map(value => (
-                            <g
-                                key={value}
-                                transform={
-                                    `translate(0 ${getInputTextTickY(value)})`
-                                }
-                            >
-                                <line
-                                    x1="52"
-                                    x2="60"
-                                    y1="0"
-                                    y2="0"
-                                    stroke="#495057"
-                                    strokeWidth="1"
-                                />
-                                <text
-                                    x="48"
-                                    y="0"
-                                    dy="0.32em"
-                                    fill="#495057"
-                                    fontSize="10"
-                                    textAnchor="end"
-                                >
-                                    {inputTextTickFormat(value)}
-                                </text>
-                            </g>
-                        ))}
-                    </svg>
-                </div>
-                )}
+                <TemporalBrush
+                    interactive={inputTextBrushEnabled}
+                    interactionLabels={allInputTextEntries.map(
+                        ([, records], index) =>
+                            records[0]?.sequenceIndex ?? index
+                    )}
+                    range={inputTextBrushEnabled ? brushRange : null}
+                    syncRevision={brushSyncRevision}
+                    height={inputTextPlotHeight}
+                    mode={mode}
+                    onInteractionStart={clearRectangleSelection}
+                    onRangeChange={handleBrushRangeChange}
+                    positions={inputTextBrushYPositions}
+                    target={target}
+                    widgetType="input-text"
+                />
                 <div
                     style={{
                         position: "relative",
                         flex: 1,
                         minWidth: 0,
                         height: `${inputTextPlotHeight}px`,
+                        paddingRight: reserveInputTextZoomAxisSpace
+                            ? `${ZOOM_AXIS_RIGHT_SPACE}px`
+                            : undefined,
+                        boxSizing: "border-box",
                     }}
                 >
+                    {inputTextZoomDomain && (
+                        <ZoomedRangeAxis
+                            domain={inputTextZoomDomain}
+                            label={mode === "time"
+                                ? "Selected time range"
+                                : "Selected interaction range"}
+                            orientation="vertical"
+                            pixelLength={inputTextPlotHeight}
+                            positionedTicks={mode !== "time"
+                                ? inputTextEntries.map(([, records], index) => ({
+                                    value: records[0].sequenceIndex,
+                                    position: inputTextYPositions[index],
+                                }))
+                                : undefined}
+                            step={mode === "time" ? undefined : 1}
+                            integerTicks={mode !== "time"}
+                            theme={theme}
+                            topInset={0}
+                            formatTick={value => (
+                                `${Number(Number(value).toFixed(2))}${
+                                    mode === "time" ? "s" : ""
+                                }`
+                            )}
+                        />
+                    )}
                     {inputTextEntries.map(([, records], index) => {
                         const record = records[0];
                         const value = record.value;
@@ -880,9 +1390,11 @@ const Chart = ({
                                 style={{
                                     position: "absolute",
                                     top:
-                                        `${inputTextYPositions[index] - 8}px`,
+                                        `${inputTextYPositions[index] - 12}px`,
                                     left: 0,
-                                    right: 0,
+                                    right: reserveInputTextZoomAxisSpace
+                                        ? `${ZOOM_AXIS_RIGHT_SPACE}px`
+                                        : 0,
                                     height: "24px",
                                     display: "flex",
                                     alignItems: "center",
@@ -951,46 +1463,32 @@ const Chart = ({
         const renderBody = () => chartData.isInputText
             ? renderInputTextBody()
             : (
+             <>
              <div
                  data-provenance-chart-target={target}
                  style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start' }}
              >
-                 {brushEnabled && (
+                 {showInteractionAxis && (
                      <TemporalBrush
+                         interactionLabels={allSortedEntries.map(([, records]) => records[0]?.sequenceIndex)}
+                         height={temporalPlotHeight}
+                         interactive={brushEnabled}
                          mode={chartData.mode ?? mode}
+                         onInteractionStart={clearRectangleSelection}
                          onRangeChange={handleBrushRangeChange}
+                         offsetTop={reserveValueZoomAxisSpace
+                             ? ZOOM_AXIS_TOP_SPACE
+                             : 0}
                          positions={brushYPositions}
+                         range={brushRange}
+                         syncRevision={brushSyncRevision}
                          target={target}
-                         tooltipId={tooltipId}
                          widgetType={
                              chartData.isRangeSlider
                                  ? "range-slider"
                                  : "single-slider"
                          }
                      />
-                 )}
-                 {(
-                     (chartData.isRangeSlider ||
-                         chartData.isSingleSlider) &&
-                     !brushEnabled
-                 ) && (
-                     <div style={{ 
-                         writingMode: 'vertical-rl', 
-                         transform: 'rotate(180deg)',
-                         fontSize: '12px', 
-                         color: '#999', 
-                         fontWeight: 'bold', 
-                         textAlign: 'center', 
-                         marginRight: '8px',
-                         width: '28px',
-                         minWidth: '28px',
-                         whiteSpace: 'nowrap',
-                         alignSelf: 'center'
-                     }}>
-                         {(chartData.mode ?? mode) === "time"
-                             ? "time"
-                             : "Sequence of Interactions"}
-                     </div>
                  )}
                  <div style={{
                      display: 'flex',
@@ -1004,21 +1502,105 @@ const Chart = ({
                          : 'auto',
                      flexGrow: 1,
                      position: 'relative',
+                     paddingTop: reserveValueZoomAxisSpace
+                         ? `${ZOOM_AXIS_TOP_SPACE}px`
+                         : undefined,
+                     paddingRight: reserveInteractionZoomAxisSpace
+                         ? `${ZOOM_AXIS_RIGHT_SPACE}px`
+                         : undefined,
+                     boxSizing: 'border-box',
                  }}>
+                 {valueBrushEnabled && Array.isArray(valueBrushRange) && (
+                     <ZoomedRangeAxis
+                         domain={valueBrushRange}
+                         label="Selected slider value range"
+                         orientation="horizontal"
+                         pixelLength={valueBrushWidth}
+                         step={sliderTickStep ?? sliderStep}
+                         minimumStep={sliderStep}
+                         ticksArray={sliderTicksArray}
+                         theme={theme}
+                         rightInset={reserveInteractionZoomAxisSpace
+                             ? ZOOM_AXIS_RIGHT_SPACE
+                             : 0}
+                     />
+                 )}
+                 {brushEnabled && interactionZoomRange && (
+                     <ZoomedRangeAxis
+                         domain={interactionZoomRange}
+                         label="Selected interaction range"
+                         orientation="vertical"
+                         pixelLength={temporalPlotHeight}
+                         positionedTicks={sortedEntries.map(([, records], index) => ({
+                             value: records[0].sequenceIndex,
+                             position: temporalYPositions[index],
+                         }))}
+                         step={1}
+                         theme={theme}
+                         topInset={reserveValueZoomAxisSpace
+                             ? ZOOM_AXIS_TOP_SPACE
+                             : 0}
+                     />
+                 )}
+                 {showValueAxis && (
+                     <div ref={valueBrushContainerRef} style={{ width: "100%", order: 2 }}>
+                         <TemporalValueBrush
+                             interactive={valueBrushEnabled}
+                             max={domainMax}
+                             min={domainMin}
+                             step={sliderStep}
+                             showTicks={sliderShowTicks}
+                             tickStep={sliderTickStep}
+                             ticksArray={sliderTicksArray}
+                             mode={chartData.mode ?? mode}
+                              onInteractionStart={clearRectangleSelection}
+                             onRangeChange={handleValueBrushRangeChange}
+                             target={target}
+                             width={valueBrushWidth}
+                             widgetType={
+                                 chartData.isRangeSlider
+                                     ? "range-slider"
+                                     : "single-slider"
+                             }
+                         />
+                     </div>
+                 )}
                  
                  
-                 {chartData.isRangeSlider || chartData.isSingleSlider ? (
-                    <div style={{
-                        position: 'relative',
-                        width: '100%',
-                        height: `${temporalPlotHeight}px`,
-                        minHeight: `${temporalPlotHeight}px`,
-                    }}>
+                  {chartData.isRangeSlider || chartData.isSingleSlider ? (
+                       <div style={{
+                           position: 'relative',
+                           width: '100%',
+                           height: `${temporalPlotHeight}px`,
+                           minHeight: `${temporalPlotHeight}px`,
+                           overflow: valueBrushRange ? 'hidden' : 'visible',
+                           order: 1,
+                           cursor: rectangleToolEnabled
+                               ? rectangleDragMode === 'move' ? 'move' : 'crosshair'
+                               : undefined,
+                       }}
+                       data-provenance-rectangle-plot={
+                           rectangleToolEnabled ? "true" : undefined
+                       }
+                       onMouseDown={handleRectangleMouseDown}
+                       >
                         <svg
                             height={temporalPlotHeight}
                             style={{ position: 'absolute', top: 0, left: '6px', width: 'calc(100% - 12px)', height: `${temporalPlotHeight}px`, overflow: 'visible', pointerEvents: 'none', zIndex: 0 }}
                         >
-                            {temporalSliderConnections.map(connection => (
+                            {temporalSmoothing.active ? (
+                                <SliderTemporalSmoothingCurve
+                                    samples={temporalSmoothing.samples}
+                                    method={temporalSmoothing.method}
+                                    min={valueDomainMin}
+                                    max={valueDomainMax}
+                                    width={Math.max(valueBrushWidth - 12, 1)}
+                                    height={temporalPlotHeight}
+                                    range={chartData.isRangeSlider}
+                                    recencyStops={temporalSmoothingStops}
+                                    gradientKey={`${target}-temporal`}
+                                />
+                            ) : temporalSliderConnections.map(connection => (
                                 <line
                                     key={`${connection.endpoint}-${connection.fromIndex}`}
                                     data-provenance-temporal-line={connection.endpoint}
@@ -1032,11 +1614,11 @@ const Chart = ({
                             ))}
                          </svg>
 
-                         <div style={{
-                             position: 'relative',
-                             height: `${temporalPlotHeight}px`,
+                          <div style={{
+                              position: 'relative',
+                              height: `${temporalPlotHeight}px`,
                          }}>
-                              {sortedEntries.map(([label, records], index) => {
+                              {!temporalSmoothing.active && sortedEntries.map(([label, records], index) => {
                                   const totalRows = sortedEntries.length;
                                   const relativeIndex = index / (totalRows - 1 || 1);
                                   const color = d3.interpolateOranges(0.3 + (relativeIndex * 0.7));
@@ -1058,8 +1640,8 @@ const Chart = ({
                                                const start = record.select.index;
                                                const end = record.unselect ? record.unselect.index : maxIndex;
                                                
-                                               const left = ((start - minIndex) / rangeSpan) * 100;
-                                               const right = ((end - minIndex) / rangeSpan) * 100;
+                                               const left = ((start - valueDomainMin) / rangeSpan) * 100;
+                                               const right = ((end - valueDomainMin) / rangeSpan) * 100;
                                                const lowValue = Array.isArray(record.value)
                                                    ? record.value[0]
                                                    : record.value ?? start;
@@ -1244,125 +1826,74 @@ const Chart = ({
                                       </div>
                                   </div>
                               )})}
-                         </div>
-                     </div>
-                  ) : (
+                          </div>
+                          {rectangleToolEnabled && rectangleSelection && (
+                              <div
+                                  data-provenance-rectangle-selection="true"
+                                  aria-hidden="true"
+                                  style={{
+                                      position: "absolute",
+                                      left: `${rectangleSelection.left}px`,
+                                      top: `${rectangleSelection.top}px`,
+                                      width: `${rectangleSelection.width}px`,
+                                      height: `${rectangleSelection.height}px`,
+                                      ...rectangleZoomStyle,
+                                      pointerEvents: rectangleDragMode === "create" ? "none" : "auto",
+                                      cursor: "move",
+                                      zIndex: 4,
+                                  }}
+                              />
+                          )}
+                      </div>
+                   ) : (
                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflowY: 'auto', flexGrow: 1 }}>
                          {sortedEntries.map(([label, records]) => (
                               <div key={label} style={{ display: 'flex', alignItems: 'center', height: '24px', position: 'relative' }}>
-                                  <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: rowBg, borderRadius: '3px', zIndex: 0 }}>
-                                      {records.map((record, i) => {
-                                           if (!record.select) return null;
-                                           const startRaw = record.select.index;
-                                           const endRaw = record.unselect ? record.unselect.index : maxIndex;
-                                           const start = (startRaw ?? 0) - indexOffset;
-                                           const end = (endRaw ?? maxIndex) - indexOffset;
-                                           
-                                           const left = ((start - minIndex) / (displaySpan || 1)) * 100;
-                                           const width = Math.max(0, ((end - start) / (displaySpan || 1)) * 100);
-                                           
-                                           const relativeTime = (start - minIndex) / (displaySpan || 1);
-                                           const color = d3.interpolateOranges(0.3 + (relativeTime * 0.7));
-                                           const tooltipProps = getTooltipAnchorProps(
-                                               tooltipId,
-                                               () => formatTemporalTooltip({
-                                                   label: chartData.tooltipLabel,
-                                                   value: label,
-                                                   record,
-                                                   kind: chartData.tooltipKind,
-                                               })
-                                           );
-                                           
-                                            return (
-                                               <div
-                                                  key={i}
-                                                  {...tooltipProps}
-                                                  role={
-                                                      chartData.isInputText
-                                                          ? "button"
-                                                          : undefined
-                                                  }
-                                                  tabIndex={
-                                                      chartData.isInputText
-                                                          ? 0
-                                                          : undefined
-                                                  }
-                                                  data-provenance-temporal-value={
-                                                      chartData.isInputText
-                                                          ? record.value
-                                                          : undefined
-                                                  }
-                                                  aria-label={
-                                                      chartData.isInputText
-                                                          ? (
-                                                              `Restore ${chartData.tooltipLabel} ` +
-                                                              `to ${record.value === ""
-                                                                  ? "<empty>"
-                                                                  : record.value}`
-                                                          )
-                                                          : undefined
-                                                  }
-                                                  onClick={
-                                                      chartData.isInputText
-                                                          ? () =>
-                                                              restoreInputTextTemporalValue({
-                                                                  restoreWidgetValue,
-                                                                  target,
-                                                                  value:
-                                                                      record.value,
-                                                              })
-                                                          : undefined
-                                                  }
-                                                  onKeyDown={
-                                                      chartData.isInputText
-                                                          ? event => {
-                                                              if (
-                                                                  event.key === "Enter" ||
-                                                                  event.key === " "
-                                                              ) {
-                                                                  event.preventDefault();
-                                                                  restoreInputTextTemporalValue({
-                                                                      restoreWidgetValue,
-                                                                      target,
-                                                                      value:
-                                                                          record.value,
-                                                                  });
-                                                              }
-                                                          }
-                                                          : undefined
-                                                  }
-                                                  style={{
-                                                    ...tooltipProps.style,
-                                                    position: 'absolute',
-                                                   left: `${left}%`,
-                                                   width: `${width}%`,
-                                                   minWidth: '8px',
-                                                    height: '100%',
-                                                    backgroundColor: color,
-                                                    border: `1px solid ${d3.color(color).darker()}`,
-                                                    cursor:
-                                                        chartData.isInputText
-                                                            ? 'pointer'
-                                                            : 'default',
-                                                    opacity:
-                                                        record.kind === "sample"
-                                                            ? 0.7
-                                                            : 1,
-                                                }} />
-                                           );
-                                      })}
+                                  <div style={{ position: 'absolute', inset: 0 }}>
+                                      <TimelineVis
+                                          records={records}
+                                          maxIndex={maxIndex}
+                                          smoothing={scalability?.temporal_view?.strategy === "smoothing"}
+                                          smoothingWholeBar
+                                          smoothingBlurRadius={scalability?.temporal_view?.smoothing_options?.blur_radius}
+                                          tooltipId={tooltipId}
+                                          widgetId={chartData.tooltipLabel}
+                                          value={label}
+                                          kind={chartData.tooltipKind}
+                                      />
                                   </div>
-                                  
+
                                   <div style={{ position: 'relative', zIndex: 1, padding: '0 8px', width: '100%', fontSize: '12px', fontWeight: 'bold', color: textColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', pointerEvents: 'none' }} title={label}>
                                       {label}
                                   </div>
                               </div>
                          ))}
                       </div>
-                   )}
-              </div>
-          </div>
-        );
+                    )}
+               </div>
+           </div>
+           {rectangleToolEnabled && rectanglePoints.length > 0 && (
+               <RectangleDerivedChart
+                   height={temporalPlotHeight}
+                   mode={chartData.mode ?? mode}
+                   placement="full"
+                   points={rectanglePoints}
+                   range={chartData.isRangeSlider}
+                   theme={theme}
+                   tooltipId={tooltipId}
+                   tooltipLabel={chartData.tooltipLabel}
+                   tooltipKind={chartData.tooltipKind}
+                   width={valueBrushWidth}
+                   domainMin={
+                       rectangleValueDomain?.[0] ?? valueDomainMin
+                   }
+                   domainMax={
+                       rectangleValueDomain?.[1] ?? valueDomainMax
+                   }
+               />
+           )}
+           </>
+         );
 
         if (part === "header") {
             return renderHeader();

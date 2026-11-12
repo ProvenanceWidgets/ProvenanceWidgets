@@ -1,0 +1,22 @@
+{
+  "name": "jl-array1",
+  "version": "1.0.0",
+  "description": "Array with 1 to N indexing",
+  "main": "jl-array1.js",
+  "scripts": {
+    "test": "mocha --reporter list",
+    "pretest": "eslint --ignore-path .gitignore ."
+  },
+  "keywords": [
+    "array",
+    "1:N",
+    "Julia"
+  ],
+  "author": "gorlang",
+  "license": "MIT",
+  "devDependencies": {
+    "eslint": "^8.0.1",
+    "eslint-config-strongloop": "^2.1.0",
+    "mocha": "^9.1.3"
+  }
+}

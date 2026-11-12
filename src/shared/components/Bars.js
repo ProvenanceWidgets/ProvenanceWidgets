@@ -178,8 +178,8 @@ export default function Bars(props) {
                                 provenance.domain?.get(colorDomain)
                             )
                         )}
-                        stroke={value === recentKey ? "#000" : "none"}
-                        strokeWidth={value === recentKey ? 2 : 0}
+                        stroke={props.layout === "checkbox" ? "#fff" : value === recentKey ? "#000" : "none"}
+                        strokeWidth={props.layout === "checkbox" || value === recentKey ? 2 : 0}
                         {...(
                             orientation === "horizontal"
                                 ? {

@@ -64,6 +64,71 @@ export const buildSliderTicks = ({
 };
 
 /**
+ * Build a readable subset of slider ticks for an axis with a known pixel
+ * length. The underlying slider step/ticksArray remains authoritative; this
+ * helper only reduces density when the selected domain is too crowded.
+ */
+export const buildAdaptiveSliderTicks = ({
+    min,
+    max,
+    step = 1,
+    minimumStep,
+    ticksArray,
+    pixelLength,
+    minTickSpacing = 48,
+}) => {
+    const floor = toFiniteNumber(min);
+    const ceil = toFiniteNumber(max);
+    if (floor === null || ceil === null || ceil < floor) return [];
+    if (floor === ceil) return [floor];
+
+    const availableLength = Math.max(1, Number(pixelLength) || 1);
+    const targetCount = Math.max(
+        2,
+        Math.floor(availableLength / Math.max(24, minTickSpacing)) + 1
+    );
+    const configuredTicks = buildSliderTicks({
+        min: floor,
+        max: ceil,
+        step,
+        ticksArray,
+        maxTicks: Math.max(1000, targetCount * 20),
+    });
+    // A selected domain can be smaller than the configured tick interval.
+    // Fill that sparse result from the selected domain so the zoomed axis does
+    // not collapse to two endpoint labels.
+    const normalizedMinimumStep = toFiniteNumber(minimumStep);
+    const minimumStepTicks = configuredTicks.length < targetCount &&
+        normalizedMinimumStep !== null &&
+        normalizedMinimumStep > 0
+        ? buildSliderTicks({
+            min: floor,
+            max: ceil,
+            step: normalizedMinimumStep,
+            maxTicks: Math.max(1000, targetCount * 20),
+        })
+        : [];
+    const allTicks = configuredTicks.length < targetCount
+        ? uniqueSortedNumbers([
+            ...configuredTicks,
+            ...minimumStepTicks,
+            floor,
+            ceil,
+        ])
+        : configuredTicks;
+    if (allTicks.length <= targetCount) return allTicks;
+
+    const stride = Math.ceil((allTicks.length - 1) / (targetCount - 1));
+    return uniqueSortedNumbers(
+        allTicks.filter((_, index) => (
+            index === 0 ||
+            index === allTicks.length - 1 ||
+            index % stride === 0
+        ))
+    );
+};
+
+/**
  * Label the current handle(s) and domain endpoints. Hide an endpoint when a
  * handle is too close to prevent overlap.
  */

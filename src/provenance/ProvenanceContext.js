@@ -19,6 +19,12 @@ const ProvenanceContext = createContext({
         focusWidget: () => false,
         setWidgetColors: () => { },
         setRevertedValues: () => { }
+    },
+    session: {
+        has: () => false,
+        isAccepted: () => false,
+        register: () => false,
+        accept: () => false,
     }
 });
 

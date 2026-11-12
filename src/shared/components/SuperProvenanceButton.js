@@ -1,6 +1,6 @@
 import { Button } from 'primereact/button/button.esm.js';
 import { useState, useRef, useEffect, useMemo, useContext } from 'react';
-import { Tooltip } from 'react-tooltip';
+import SuperTemporalView from './SuperTemporalView.js';
 import useProvenance from '../../provenance/hooks/useProvenance.js';
 import useWidgetColors from '../../provenance/hooks/useWidgetColors.js';
 import useWidgetRegistry from '../../provenance/hooks/useWidgetRegistry.js';
@@ -13,7 +13,7 @@ import {
     restoreRegisteredWidgetsAtTime,
 } from '../logic/superProvenanceData.js';
 
-const SuperProvenanceButton = ({ prov }) => {
+const SuperProvenanceButton = ({ id, prov, scalability, temporalBrush }) => {
     const [open, setOpen] = useState()
     const [registeredComponents] = useProvenance()
     const [widgetColors] = useWidgetColors()
@@ -242,111 +242,14 @@ const SuperProvenanceButton = ({ prov }) => {
                         flexDirection: 'column',
                         gap: '0.5rem'
                     }}>
-                    {interactionSequence.length > 0 && (
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            width: '100%',
-                            marginBottom: '1rem'
-                        }}>
-                            {interactionSequence.map((interaction, idx) => (
-                                <div key={idx} style={{ width: interaction.width, flexShrink: 0 }}>
-                                    <div
-                                        data-tooltip-id={`interaction-tooltip-${idx}`}
-                                        data-tooltip-html={`<div>Widget: ${interaction.widgetId}<br>Time: ${interaction.time ? interaction.time.toLocaleString() : 'N/A'}<br>Index: ${interaction.index ?? 'N/A'}</div>`}
-                                        style={{
-                                            width: '100%',
-                                            height: '40px',
-                                            backgroundColor: interaction.color,
-                                            opacity: 0.6,
-                                            border: '1px solid rgba(0, 0, 0, 0.3)',
-                                            cursor: 'pointer',
-                                            transition: 'opacity 0.2s ease, width 0.3s ease'
-                                        }}
-                                        onClick={() => handleInteractionClick(interaction)}
-                                        onMouseEnter={(e) => e.target.style.opacity = 1}
-                                        onMouseLeave={(e) => e.target.style.opacity = 0.6}
-                                    />
-                                    <Tooltip
-                                        id={`interaction-tooltip-${idx}`}
-                                        events={['hover']}
-                                        opacity={1}
-                                        style={{ zIndex: 100 }}
-                                    />
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                    {temporalWidgetIds.map((target, index) => (
-                        <div key={target} style={{
-                            position: 'relative',
-                            borderBottom: index < temporalWidgetIds.length - 1 ? '1px solid #eee' : 'none',
-                            minHeight: '32px'
-                        }}>
-                            <div style={{ padding: '0.5rem', position: 'relative', zIndex: 1 }}>
-                                <label style={{ fontSize: '14px', fontWeight: '500', color: '#999' }}>{target}</label>
-                            </div>
-
-                            <div style={{
-                                position: 'absolute',
-                                top: 0,
-                                left: 0,
-                                display: 'flex',
-                                width: '100%',
-                                height: '100%',
-                                zIndex: 2,
-                                pointerEvents: 'none'
-                            }}>
-                                {interactionSequence.map((interaction, idx) => (
-                                    <div key={idx} style={{
-                                        width: interaction.width,
-                                        height: '100%',
-                                        backgroundColor: interaction.widgetId === target ? interaction.color : 'transparent',
-                                        opacity: 0.45
-                                    }} />
-                                ))}
-                            </div>
-                        </div>
-                    ))}
-
-                    <div style={{
-                        marginTop: '1rem',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        width: '100%'
-                    }}>
-                        <div style={{ width: '100%', position: 'relative', height: '20px', display: 'flex', alignItems: 'center' }}>
-                            <div style={{
-                                width: '90%',
-                                height: '2px',
-                                backgroundColor: '#333',
-                                position: 'relative',
-                                margin: '0 auto'
-                            }}>
-                                <div style={{
-                                    position: 'absolute',
-                                    right: '-8px',
-                                    top: '-6px',
-                                    width: 0,
-                                    height: 0,
-                                    borderLeft: '8px solid #333',
-                                    borderTop: '6px solid transparent',
-                                    borderBottom: '6px solid transparent'
-                                }}></div>
-                            </div>
-                        </div>
-                        <p style={{
-                            margin: 0,
-                            fontSize: '14px',
-                            fontWeight: '600',
-                            color: '#333',
-                            textAlign: 'center'
-                        }}>
-                            sequence of interactions
-                        </p>
-                    </div>
+                    <SuperTemporalView
+                        id={id}
+                        interactions={interactionSequence}
+                        widgetIds={temporalWidgetIds}
+                        onRestore={handleInteractionClick}
+                        scalability={scalability}
+                        temporalBrush={temporalBrush}
+                    />
                 </div>
             )}
         </>

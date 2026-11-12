@@ -15,10 +15,16 @@ import useProvenanceController from "../provenance/hooks/useProvenanceController
 import useRevertedValue from "../provenance/hooks/useRevertedValue.js";
 import useWidgetRegistry from "../provenance/hooks/useWidgetRegistry.js";
 import useElementSize from "../shared/hooks/useElementSize.js";
+import useClippingBadge from "../shared/hooks/useClippingBadge.js";
 import useProvenanceTooltip from "../provenance/hooks/useProvenanceTooltip.js";
 import Chart from "./Chart.js";
+import {
+    resolveRecordAggregateView,
+    resolveSliderAggregateSmoothing,
+} from "../shared/logic/scalability/index.js";
 import SliderTickMarks from "../shared/components/SliderTickMarks.js";
 import RangeSliderBars from "../shared/components/RangeSliderBars.js";
+import SliderAggregateViewport from "../shared/components/SliderAggregateViewport.js";
 import { shouldCommitSliderChange } from "../shared/logic/sliderInteraction.js";
 import {
     callRangeSliderCallbacks,
@@ -106,6 +112,30 @@ const Rangeslider = (props) => {
             props.onProvenanceChange ?? props.provenanceChange,
         strategyFactory,
         valuesEqual: rangeSliderValuesEqual,
+    });
+    const { aggregateProvenance } = useMemo(() => resolveRecordAggregateView({
+        records: serializedProvenance.data,
+        provenance: strategy,
+        strategyFactory,
+        scalability: props.scalability,
+        width: containerWidth,
+        mode: provenanceMode,
+    }), [serializedProvenance, strategy, strategyFactory, props.scalability, containerWidth, provenanceMode]);
+    const smoothingSamples = useMemo(() => resolveSliderAggregateSmoothing({
+        scalability: props.scalability,
+        records: serializedProvenance.data,
+        provenance: aggregateProvenance,
+        min, max, step, kind: "range",
+    }), [serializedProvenance, aggregateProvenance, props.scalability, min, max, step]);
+    const {
+        message: clippingMessage,
+        revision: clippingRevision,
+    } = useClippingBadge({
+        records: serializedProvenance.data,
+        scalability: props.scalability,
+        width: containerWidth,
+        mode: provenanceMode,
+        showTimeline: isDropdownVisible,
     });
     const [displayValue, setDisplayValue] = useState(currentValue);
     const viewPanelLayout = getSliderViewPanelLayout({
@@ -231,6 +261,8 @@ const Rangeslider = (props) => {
             setValue: applyRegisteredValue,
             visualize,
             mode: provenanceMode,
+            clippingMessage,
+            clippingRevision,
             focus: () => {
                 const element = elementRef.current;
                 element?.scrollIntoView?.({
@@ -265,6 +297,8 @@ const Rangeslider = (props) => {
         notifyWidget,
         visualize,
         provenanceMode,
+        clippingMessage,
+        clippingRevision,
     ]);
 
     useEffect(() => {
@@ -330,7 +364,14 @@ const Rangeslider = (props) => {
                 position: "relative",
             }}
         >
-            <div
+            <SliderAggregateViewport
+                scalability={props.scalability}
+                min={min}
+                max={max}
+                width={containerWidth}
+                label={tooltipLabel}
+            >
+            {({ width: contentWidth, min: windowMin, max: windowMax, labelPrecision }) => <div
                 style={{
                     position: "relative",
                     width: "100%",
@@ -349,11 +390,14 @@ const Rangeslider = (props) => {
                             }}
                         >
                             <RangeSliderBars
-                                provenance={strategy}
+                                provenance={aggregateProvenance}
+                                smoothingSamples={smoothingSamples}
+                                smoothingMethod={props.scalability?.aggregate_view?.smoothing_options?.method?.type}
+                                smoothingGradientKey={`${props.id}-range`}
                                 colorScheme={interpolateOranges}
                                 min={min}
                                 max={max}
-                                width={containerWidth}
+                                width={contentWidth}
                                 height={50}
                                 onRangeSelect={applyRegisteredValue}
                                 getBarProps={(value, record) =>
@@ -366,14 +410,14 @@ const Rangeslider = (props) => {
                                             kind: "range",
                                             sequenceIndex: Math.max(
                                                 0,
-                                                (record.index ?? 1) - 1
+                                                (record.index ?? 1) - (aggregateProvenance.tooltipIndexOffset ?? 1)
                                             ),
                                             sequenceTotal: Math.max(
                                                 0,
                                                 (
-                                                    strategy.detailedData
-                                                        ?.size ?? 1
-                                                ) - 1
+                                                    aggregateProvenance.detailedData
+                                                        ?.size ?? 0
+                                                ) - (aggregateProvenance.tooltipIndexOffset ?? 1)
                                             ),
                                         })
                                     )
@@ -418,11 +462,15 @@ const Rangeslider = (props) => {
                         tickStep={tickStep}
                         ticksArray={ticksArray}
                         values={displayValue}
+                        labelMin={windowMin}
+                        labelMax={windowMax}
+                        labelPrecision={labelPrecision}
                         formatValue={options.translate}
                         trackBottom={trackBottom}
                     />
                 )}
-            </div>
+            </div>}
+            </SliderAggregateViewport>
 
             {visualize && isDropdownVisible && (
                 <div
@@ -444,11 +492,17 @@ const Rangeslider = (props) => {
                     }}
                 >
                     <Chart
+                        widgetWidth={containerWidth}
                         target={props.id}
                         theme="light"
                         provenance={serializedProvenance}
                         mode={provenanceMode}
                         temporalBrush={temporalBrush}
+                        scalability={props.scalability}
+                        sliderStep={step}
+                        sliderShowTicks={showTicks}
+                        sliderTickStep={tickStep}
+                        sliderTicksArray={ticksArray}
                     />
                 </div>
             )}

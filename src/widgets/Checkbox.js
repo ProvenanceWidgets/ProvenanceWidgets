@@ -9,10 +9,15 @@ import TimelineVis from "./TimelineVis.js";
 import DropdownBarLabel from "../shared/components/DropdownBarLabel.js";
 import {
     formatAggregateTooltip,
+    formatTemporalTooltip,
     getAggregateTooltipRecord,
     getTemporalRowTooltipProps,
     getTooltipAnchorProps,
 } from "../shared/logic/provenanceTooltip.js";
+import {
+    buildClippedSelectionBars,
+    findClippedSelectionBar,
+} from "../shared/logic/scalability/index.js";
 
 const valuesEqual = (left, right) =>
     Object.is(left, right) ||
@@ -157,20 +162,63 @@ const Checkbox = ({
                 { focusable: false }
             )
             : {};
+    const clippedBars = checkboxGroup?.clipping && timelineData
+        ? buildClippedSelectionBars({
+            records: timelineData.records,
+            maxIndex: timelineData.maxIndex,
+            mode: provenanceMode,
+            timeDomain: checkboxGroup?.timeDomain,
+            brushRange: checkboxGroup?.brushRange,
+        })
+        : [];
+    const showClippedTemporalTooltip = event => {
+        if (
+            event.target?.closest?.(
+                '[data-provenance-timeline-bar="true"]'
+            )
+        ) {
+            return;
+        }
+        const bounds = containerElementRef.current
+            ?.getBoundingClientRect?.();
+        const bar = findClippedSelectionBar(
+            clippedBars,
+            event.clientX,
+            bounds
+        );
+        if (!bar) {
+            tooltip?.hide?.();
+            return;
+        }
+        tooltip?.show?.(formatTemporalTooltip({
+            label:
+                checkboxGroup?.tooltipLabel ??
+                checkboxGroup?.id,
+            value,
+            record: bar.record,
+            kind: "multi-selection",
+        }), event);
+    };
     const temporalTooltipProps =
         visualize && showTimeline && timelineData
-            ? getTemporalRowTooltipProps(tooltip, {
-                records: timelineData.records,
-                maxIndex: timelineData.maxIndex,
-                getBounds: () =>
-                    containerElementRef.current
-                        ?.getBoundingClientRect?.(),
-                label:
-                    checkboxGroup?.tooltipLabel ??
-                    checkboxGroup?.id,
-                value,
-                kind: "multi-selection",
-            })
+            ? checkboxGroup?.clipping
+                ? {
+                    onMouseOver: showClippedTemporalTooltip,
+                    onMouseMove: showClippedTemporalTooltip,
+                    onMouseLeave: () => tooltip?.hide?.(),
+                }
+                : getTemporalRowTooltipProps(tooltip, {
+                    records: timelineData.records,
+                    maxIndex: timelineData.maxIndex,
+                    getBounds: () =>
+                        containerElementRef.current
+                            ?.getBoundingClientRect?.(),
+                    label:
+                        checkboxGroup?.tooltipLabel ??
+                        checkboxGroup?.id,
+                    value,
+                    kind: "multi-selection",
+                })
             : {};
     const rowTooltipProps = showTimeline
         ? temporalTooltipProps
@@ -224,6 +272,7 @@ const Checkbox = ({
             />
             <div
                 ref={setContainerElement}
+                data-provenance-checkbox-track={checkboxGroup?.id}
                 style={{
                     position: "relative",
                     flex: 1,
@@ -288,6 +337,10 @@ const Checkbox = ({
                                 mode={provenanceMode}
                                 timeDomain={checkboxGroup?.timeDomain}
                                 brushRange={checkboxGroup?.brushRange}
+                                clipping={checkboxGroup?.clipping}
+                                smoothing={checkboxGroup?.smoothing}
+                                smoothingWholeBar
+                                smoothingBlurRadius={checkboxGroup?.smoothingBlurRadius}
                                 tooltipId={tooltip}
                                 widgetId={
                                     checkboxGroup?.tooltipLabel ??

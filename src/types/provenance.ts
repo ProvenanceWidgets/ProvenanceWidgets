@@ -6,6 +6,8 @@ import type {
   WidgetRegistration as CoreWidgetRegistration,
 } from "@provenance-widgets/core";
 
+import type { ScalabilityOptions } from "./scalability";
+
 export type {
   LegacyProvenanceRecord,
   LegacySerializedProvenance,
@@ -38,10 +40,15 @@ export interface CommonProvenanceWidgetProps<V> {
   "data-label"?: string;
   temporalBrush?: boolean;
   enableTemporalBrush?: boolean;
+  scalability?: ScalabilityOptions;
 }
 
 export interface WidgetRegistration<V>
   extends CoreWidgetRegistration<V> {
   visualize?: boolean;
   mode?: ProvenanceMode;
+  /** Active-view notice shown on the provenance footprint badge. */
+  clippingMessage?: string | null;
+  /** Changes whenever the active clipping window changes. */
+  clippingRevision?: string;
 }

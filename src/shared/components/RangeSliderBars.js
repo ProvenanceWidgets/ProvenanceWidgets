@@ -2,6 +2,7 @@ import {
     getRangeBarSegments,
     normalizeRangeBarIndex,
 } from "../logic/rangeSliderBarData.js";
+import SliderSmoothingCurve from "./SliderSmoothingCurve.js";
 
 const RangeSliderBars = ({
     provenance,
@@ -12,13 +13,21 @@ const RangeSliderBars = ({
     colorScheme,
     getBarProps,
     onRangeSelect,
+    smoothingSamples,
+    smoothingMethod,
+    smoothingGradientKey,
 }) => {
+    const smoothingActive = smoothingSamples?.length > 0;
     const segments = getRangeBarSegments(provenance, min, max);
     const maxCount = Math.max(1, ...segments.map(segment => segment.count));
     const latestIndex = provenance?.domain?.get('index')?.[1] ?? 0;
     const indexDomain = provenance?.domain?.get('index') ?? [0, latestIndex];
     const maxBarHeight = height * 0.8;
     const x = value => ((value - min) / (max - min)) * width;
+    const recencyStops = segments.map(segment => ({
+        offset: (((segment.low + segment.high) / 2) - min) / (max - min),
+        color: colorScheme(normalizeRangeBarIndex(segment.index, indexDomain)),
+    }));
 
     return (
         <svg
@@ -30,7 +39,7 @@ const RangeSliderBars = ({
             preserveAspectRatio="none"
             style={{ display: 'block', overflow: 'visible', pointerEvents: 'none' }}
         >
-            {segments.map(segment => {
+            {!smoothingActive && segments.map(segment => {
                 const barHeight = (segment.count / maxCount) * maxBarHeight;
                 const isLatest = segment.index === latestIndex;
 
@@ -96,6 +105,17 @@ const RangeSliderBars = ({
                     </g>
                 );
             })}
+            <SliderSmoothingCurve
+                samples={smoothingSamples}
+                method={smoothingMethod}
+                min={min}
+                max={max}
+                width={width}
+                height={height}
+                scaleCount={count => (count / maxCount) * maxBarHeight}
+                recencyStops={recencyStops}
+                gradientKey={smoothingGradientKey}
+            />
         </svg>
     );
 };

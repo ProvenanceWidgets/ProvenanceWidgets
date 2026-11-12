@@ -1,3 +1,4 @@
+import useClippingBadge from "../shared/hooks/useClippingBadge.js";
 import { InputText as InputText_ } from "primereact/inputtext/inputtext.esm.js";
 import {
     useCallback,
@@ -19,7 +20,9 @@ import {
     getContrastColor,
     getScentColor,
 } from "../shared/logic/barAppearance.js";
+import useElementSize from "../shared/hooks/useElementSize.js";
 import Chart from "./Chart.js";
+import { resolveRecordAggregateView } from "../shared/logic/scalability/index.js";
 import {
     callInputTextCallbacks,
     getControlledInputTextValue,
@@ -55,6 +58,11 @@ const InputText = (props) => {
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [isDropdownVisible, setDropdownVisible] = useState(false);
     const elementRef = useRef(null);
+    const [measureContainer, { width: containerWidth }] = useElementSize();
+    const setContainerRef = useCallback(node => {
+        elementRef.current = node;
+        measureContainer(node);
+    }, [measureContainer]);
     const nativeInputRef = useRef(null);
     const propsRef = useRef(props);
     propsRef.current = props;
@@ -94,6 +102,21 @@ const InputText = (props) => {
         strategyFactory,
         // Searching the same text twice is meaningful for frequency.
         valuesEqual: () => false,
+    });
+    const { aggregateProvenance } = useMemo(() => resolveRecordAggregateView({
+        records: serializedProvenance.data,
+        provenance: strategy,
+        strategyFactory,
+        scalability: props.scalability,
+        width: containerWidth,
+        mode: provenanceMode,
+    }), [serializedProvenance, strategy, strategyFactory, props.scalability, containerWidth, provenanceMode]);
+    const { message: clippingMessage, revision: clippingRevision } = useClippingBadge({
+        records: serializedProvenance.data,
+        scalability: props.scalability,
+        width: containerWidth,
+        mode: provenanceMode,
+        showTimeline: isDropdownVisible,
     });
     const [text, setText] = useState(currentValue ?? "");
     const currentValueRef = useRef(currentValue);
@@ -192,6 +215,8 @@ const InputText = (props) => {
             setValue: applyRegisteredValue,
             visualize,
             mode: provenanceMode,
+            clippingMessage,
+            clippingRevision,
             focus: () => {
                 elementRef.current?.scrollIntoView?.({
                     behavior: "smooth",
@@ -222,6 +247,8 @@ const InputText = (props) => {
         notifyWidget,
         visualize,
         provenanceMode,
+        clippingMessage,
+        clippingRevision,
     ]);
 
     useEffect(() => {
@@ -246,10 +273,10 @@ const InputText = (props) => {
     }, [revertedValue, applyRegisteredValue]);
 
     const suggestions = useMemo(() => {
-        if (!strategy?.aggregateData || !hasProvenance) return [];
+        if (!aggregateProvenance?.aggregateData || !hasProvenance) return [];
 
         const query = text.toLocaleLowerCase();
-        const entries = [...strategy.aggregateData.entries()]
+        const entries = [...aggregateProvenance.aggregateData.entries()]
             .filter(([value]) => (
                 value !== "" &&
                 value !== undefined &&
@@ -276,11 +303,11 @@ const InputText = (props) => {
             color:
                 getScentColor(
                     value,
-                    strategy,
+                    aggregateProvenance,
                     interpolateOranges
                 ) || "#f4bd88",
         }));
-    }, [strategy, text, historyVersion]);
+    }, [aggregateProvenance, hasProvenance, text, historyVersion]);
 
     const commitValue = (
         value,
@@ -331,7 +358,7 @@ const InputText = (props) => {
 
     return (
         <div
-            ref={elementRef}
+            ref={setContainerRef}
             data-label={tooltipLabel}
             data-widget-id={id}
             data-provenance-open={
@@ -429,14 +456,14 @@ const InputText = (props) => {
                                         kind: "input",
                                         sequenceIndex: Math.max(
                                             0,
-                                            (record.index ?? 1) - 1
+                                            (record.index ?? 1) - (aggregateProvenance.tooltipIndexOffset ?? 1)
                                         ),
                                         sequenceTotal: Math.max(
                                             0,
                                             (
-                                                strategy.detailedData
-                                                    ?.size ?? 1
-                                            ) - 1
+                                                aggregateProvenance.detailedData
+                                                    ?.size ?? 0
+                                            ) - (aggregateProvenance.tooltipIndexOffset ?? 1)
                                         ),
                                     })
                                 )
@@ -548,12 +575,14 @@ const InputText = (props) => {
                     }}
                 >
                     <Chart
+                        widgetWidth={containerWidth}
                         target={id}
                         theme="light"
                         provenance={serializedProvenance}
                         provenanceStrategy={strategy}
                         mode={provenanceMode}
                         temporalBrush={temporalBrush}
+                        scalability={props.scalability}
                     />
                 </div>
             )}

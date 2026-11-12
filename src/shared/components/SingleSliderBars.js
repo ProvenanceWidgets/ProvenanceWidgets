@@ -1,5 +1,6 @@
 import { getSingleSliderBarGeometry } from "../logic/singleSliderBarGeometry.js";
 import { normalize } from "../logic/valueMath.js";
+import SliderSmoothingCurve from "./SliderSmoothingCurve.js";
 
 const SingleSliderBars = ({
     provenance,
@@ -10,7 +11,11 @@ const SingleSliderBars = ({
     height,
     orientationScheme,
     barWidth,
+    smoothingSamples,
+    smoothingMethod,
+    smoothingGradientKey,
 }) => {
+    const smoothingActive = smoothingSamples?.length > 0;
     const domainMin = Number(min);
     const domainMax = Number(max);
     const countDomain = provenance.domain?.get("count") ?? [0, 1];
@@ -27,6 +32,13 @@ const SingleSliderBars = ({
             provenance.aggregateData?.get(recent)?.index ?? -Infinity;
         return keyIndex > recentIndex ? key : recent;
     }, null);
+    const recencyStops = visibleKeys.map(key => ({
+        offset: (Number(key) - domainMin) / (domainMax - domainMin),
+        color: orientationScheme(normalize(
+            provenance.aggregateData.get(key)?.index,
+            colorDomain
+        )),
+    }));
 
     const scaleCount = count => {
         if (countEnd <= countStart) return 0;
@@ -44,7 +56,7 @@ const SingleSliderBars = ({
             style={{ overflow: "visible" }}
             aria-hidden="true"
         >
-            {visibleKeys.map(key => {
+            {!smoothingActive && visibleKeys.map(key => {
                 const record = provenance.aggregateData.get(key);
                 const barHeight = scaleCount(record?.count);
                 const geometry = getSingleSliderBarGeometry({
@@ -71,6 +83,17 @@ const SingleSliderBars = ({
                     />
                 );
             })}
+            <SliderSmoothingCurve
+                samples={smoothingSamples}
+                method={smoothingMethod}
+                min={domainMin}
+                max={domainMax}
+                width={width}
+                height={height}
+                scaleCount={scaleCount}
+                recencyStops={recencyStops}
+                gradientKey={smoothingGradientKey}
+            />
         </svg>
     );
 };
